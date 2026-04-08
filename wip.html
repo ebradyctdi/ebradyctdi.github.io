@@ -98,6 +98,19 @@
   </div>
   <div class="container">
     <div class="kpi-row" id="kpiRow"></div>
+    <div style="background:white;border-radius:10px;padding:16px 20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);margin-bottom:20px;">
+      <div style="display:flex;gap:0;" id="wipPipeline"></div>
+    </div>
+    <div onclick="filterByStatus('In Infirmary')" style="cursor:pointer;display:block;margin-bottom:20px;">
+      <div style="background:white;border-radius:10px;padding:14px 20px;box-shadow:0 1px 4px rgba(0,0,0,0.08);border-left:4px solid #dc3545;display:flex;align-items:center;gap:16px;transition:all 0.15s;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='white'">
+        <div style="font-size:24px;">🏥</div>
+        <div style="flex:1;font-size:14px;font-weight:600;color:#b71c1c;">Infirmary</div>
+        <div style="text-align:center;">
+          <div id="wipInfirmaryCount" style="font-size:24px;font-weight:700;color:#dc3545;">0</div>
+          <div style="font-size:9px;color:#888;text-transform:uppercase;">Units</div>
+        </div>
+      </div>
+    </div>
     <div class="card">
       <div class="controls">
         <div style="display:flex;gap:8px;align-items:center;">
@@ -201,12 +214,26 @@ function renderKPIs() {
     'In Infirmary': '#dc3545',
     'QC Failed': '#dc3545'
   };
-  let html = '<div class="kpi" style="border-top:3px solid #1a3a5c;"><div class="kpi-val">' + wipOrders.length + '</div><div class="kpi-lbl">Total WIP</div></div>';
-  Object.keys(counts).sort().forEach(s => {
-    const c = colors[s] || '#6c757d';
-    html += '<div class="kpi" style="border-top:3px solid '+c+';"><div class="kpi-val" style="color:'+c+';">'+counts[s]+'</div><div class="kpi-lbl">'+s+'</div></div>';
-  });
+  let html = '<div class="kpi" style="border-top:3px solid #1a3a5c;width:100%;"><div class="kpi-val">' + wipOrders.length + '</div><div class="kpi-lbl">Total WIP</div></div>';
   document.getElementById('kpiRow').innerHTML = html;
+
+  // Pipeline
+  const pipeSteps = [
+    { label: 'Received, Awaiting Start', color: '#0d6efd', link: 'start-build.html' },
+    { label: 'In Assembly', color: '#fd7e14', link: 'build-complete.html' },
+    { label: 'Awaiting QC', color: '#28a745', link: 'qc-result.html' },
+    { label: 'QC Passed', color: '#17a2b8', link: 'ship-out.html' },
+  ];
+  document.getElementById('wipPipeline').innerHTML = pipeSteps.map((s, i) => {
+    const cnt = counts[s.label] || 0;
+    const arrow = i < pipeSteps.length - 1 ? '<div style="display:flex;align-items:center;font-size:16px;color:#ccc;padding:0 4px;">→</div>' : '';
+    return '<div style="flex:1;cursor:pointer;" onclick="filterByStatus(\'' + s.label.replace(/'/g,"\\'") + '\')"><div style="background:white;padding:12px 8px;text-align:center;border:1px solid #e0e0e0;border-top:3px solid '+s.color+';'+(i===0?'border-radius:8px 0 0 8px;':'')+(i===pipeSteps.length-1?'border-radius:0 8px 8px 0;':'')+'transition:background 0.15s;" onmouseover="this.style.background=\'#f0f4ff\'" onmouseout="this.style.background=\'white\'">'
+      + '<div style="font-size:22px;font-weight:700;color:'+s.color+';">'+cnt+'</div>'
+      + '<div style="font-size:9px;color:#666;text-transform:uppercase;letter-spacing:0.3px;margin-top:2px;">'+s.label+'</div></div></div>' + arrow;
+  }).join('');
+
+  // Infirmary count
+  document.getElementById('wipInfirmaryCount').textContent = counts['In Infirmary'] || 0;
 }
 
 function buildStatusFilter() {
@@ -226,6 +253,12 @@ function badgeClass(status) {
   if (status === 'QC Failed') return 'badge-qcfailed';
   if (status === 'In Infirmary') return 'badge-infirmary';
   return 'badge-default';
+}
+
+function filterByStatus(status) {
+  const sel = document.getElementById('filterStatus');
+  sel.value = sel.value === status ? '' : status; // toggle: click again to clear
+  renderTable();
 }
 
 function sortBy(col) {
