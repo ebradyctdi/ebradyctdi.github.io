@@ -122,7 +122,7 @@ let entries = [], scriptUrl = '', isConnected = false, receivedPOs = new Set(), 
 try {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) { entries = JSON.parse(saved); entries.forEach(e => receivedPOs.add(e.po)); }
-  scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbyTbbDk63asOIioURSmlNo558BqHiHqmsXtq06RDmK0FJ4oCLYZdA-wsWfDDEKdxNwp/exec';
+  scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzzEx5-HVMBJl0rHBSEcNn0UY3VJ6zvF6BO0xNzajW9S-7tNEXyMDk9BTbdf4e2ValO/exec';
 } catch(e) {}
 
 const USER_KEY = 'awat_username';
