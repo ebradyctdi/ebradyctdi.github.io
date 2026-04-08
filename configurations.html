@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWAT - Configurations</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand h2 { font-size: 16px; font-weight: 700; }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #888; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 16px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 960px; margin: 0 auto; padding: 24px; width: 100%; }
+  .card { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+  .cfg-table { width: 100%; border-collapse: collapse; }
+  .cfg-table th { background: #1a3a5c; color: white; padding: 10px 12px; font-size: 11px; text-transform: uppercase; text-align: left; }
+  .cfg-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #eee; }
+  .cfg-table tr:hover td { background: #f8f9fa; }
+  .cfg-name { font-weight: 600; font-family: Consolas, monospace; font-size: 14px; }
+  .cfg-mat { font-size: 12px; color: #555; font-family: Consolas, monospace; }
+  .btn { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.15s; }
+  .btn-edit { background: #e3f2fd; color: #0d47a1; }
+  .btn-edit:hover { background: #bbdefb; }
+  .btn-delete { background: #fce4ec; color: #b71c1c; }
+  .btn-delete:hover { background: #f8bbd0; }
+  .btn-add { padding: 10px 24px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .btn-add:hover { background: #218838; }
+  .refresh-btn { padding: 8px 16px; background: white; color: #1a3a5c; border: 1px solid #1a3a5c; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .refresh-btn:hover { background: #f0f2f5; }
+  .empty-state { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; padding: 0; max-width: 600px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); overflow: hidden; max-height: 85vh; display: flex; flex-direction: column; }
+  .modal-header { background: #1a3a5c; color: white; padding: 16px 24px; }
+  .modal-header h3 { font-size: 16px; }
+  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; }
+  .modal-footer button { padding: 8px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .btn-cancel { background: #e9ecef; color: #333; }
+  .btn-cancel:hover { background: #dee2e6; }
+  .btn-save { background: #28a745; color: white; }
+  .btn-save:hover { background: #218838; }
+  .btn-save:disabled { background: #ccc; }
+  .form-label { display: block; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 4px; margin-top: 12px; }
+  .form-label:first-child { margin-top: 0; }
+  .form-input { width: 100%; padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: Consolas, monospace; }
+  .form-input:focus { border-color: #1a3a5c; outline: none; }
+  .form-input.sm { font-size: 13px; padding: 8px 10px; }
+  .mat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .confirm-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 400; align-items: center; justify-content: center; }
+  .confirm-overlay.show { display: flex; }
+  .confirm-box { background: white; border-radius: 10px; padding: 28px; max-width: 380px; width: 90%; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
+  .confirm-box h3 { font-size: 16px; color: #b71c1c; margin-bottom: 8px; }
+  .confirm-box p { font-size: 13px; color: #666; margin-bottom: 20px; }
+  .confirm-box .cfg-highlight { font-size: 18px; font-weight: 700; color: #1a3a5c; font-family: Consolas, monospace; margin: 8px 0 16px; }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">AWAT - Alburtis, PA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Views</div>
+    <a href="overview.html"><span class="icon">🏠</span> Overview</a>
+    <a href="wip.html"><span class="icon">🏭</span> WIP</a>
+    <a href="infirmary.html"><span class="icon">🏥</span> Infirmary</a>
+    <a href="history.html"><span class="icon">📜</span> Ship History</a>
+    <div class="nav-section">Apps</div>
+    <a href="receive-order.html"><span class="icon">📦</span> Receive Order</a>
+    <a href="start-build.html"><span class="icon">🔨</span> Start Build</a>
+    <a href="material-info.html"><span class="icon">📋</span> Material Info</a>
+    <a href="build-complete.html"><span class="icon">✅</span> Build Complete</a>
+    <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
+    <a href="ship-out.html"><span class="icon">🚚</span> Ship Out</a>
+    <a href="photo-capture.html"><span class="icon">📸</span> Photo Capture</a>
+    <div class="nav-section">System</div>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    <a href="configurations.html" class="active"><span class="icon">🗂️</span> Configurations</a>
+  </div>
+</nav>
+<div class="main-wrap">
+  <div class="header">
+    <div><h1>Configurations</h1><div class="header-sub">Manage cabinet configurations and major materials</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;border:none;padding:0;">Cabinet Configurations <span id="cfgCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
+        <div style="display:flex;gap:8px;">
+          <button class="refresh-btn" onclick="loadConfigs()">Refresh</button>
+          <button class="btn-add" onclick="openAddModal()">+ Add Configuration</button>
+        </div>
+      </div>
+      <div id="cfgList"><div class="empty-state">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeEditModal()">
+  <div class="modal">
+    <div class="modal-header"><h3 id="editModalTitle">Add Configuration</h3></div>
+    <div class="modal-body">
+      <label class="form-label">Configuration Name</label>
+      <input type="text" class="form-input" id="cfgName" placeholder="e.g. AWAT(CH-EQ-74)-AB-1CO-AS-0">
+      <label class="form-label" style="margin-top:16px;">Major Materials (up to 10)</label>
+      <div class="mat-grid" id="matGrid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+      <button class="btn-save" id="saveBtn" onclick="saveConfig()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="confirm-overlay" id="deleteConfirm" onclick="if(event.target===this)closeDeleteConfirm()">
+  <div class="confirm-box">
+    <h3>Delete Configuration?</h3>
+    <div class="cfg-highlight" id="deleteName"></div>
+    <p>This cannot be undone. Existing POs using this configuration will not be affected.</p>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn-cancel" onclick="closeDeleteConfirm()">Cancel</button>
+      <button style="padding:8px 24px;background:#dc3545;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;" id="confirmDeleteBtn" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:500;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+</body>
+</html>
+
+<script>
+const URL_KEY = 'awat_script_url';
+let scriptUrl = '', configs = [], editMode = null, editOrigName = '', deleteTarget = '', _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbyTbbDk63asOIioURSmlNo558BqHiHqmsXtq06RDmK0FJ4oCLYZdA-wsWfDDEKdxNwp/exec'; } catch(e) {}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Request timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+async function loadConfigs() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readconfigs' });
+    if (json.success) {
+      setStatus('connected', 'Connected');
+      configs = json.data || [];
+      renderConfigs();
+    } else { throw new Error(json.error); }
+  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+}
+
+function renderConfigs() {
+  const container = document.getElementById('cfgList');
+  document.getElementById('cfgCount').textContent = configs.length ? '(' + configs.length + ')' : '';
+  if (!configs.length) {
+    container.innerHTML = '<div class="empty-state">No configurations yet. Click "+ Add Configuration" to create one.</div>';
+    return;
+  }
+  let html = '<table class="cfg-table"><thead><tr><th>Configuration</th><th>Major Materials</th><th style="width:120px;"></th></tr></thead><tbody>';
+  configs.forEach(c => {
+    const name = (c['Configuration']||'').toString();
+    const mats = [];
+    for (let i = 1; i <= 10; i++) {
+      const m = (c['Major Material ' + i]||'').toString().trim();
+      if (m && m !== '-') mats.push(m);
+    }
+    html += '<tr><td class="cfg-name">' + name + '</td>'
+      + '<td class="cfg-mat">' + (mats.length ? mats.join(', ') : '<span style="color:#ccc;">None</span>') + '</td>'
+      + '<td style="text-align:right;"><button class="btn btn-edit" onclick="openEditModal(\'' + name.replace(/'/g,"\\'") + '\')">Edit</button> '
+      + '<button class="btn btn-delete" onclick="openDeleteConfirm(\'' + name.replace(/'/g,"\\'") + '\')">Delete</button></td></tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function buildMatGrid() {
+  let html = '';
+  for (let i = 1; i <= 10; i++) {
+    html += '<div><label class="form-label" style="margin-top:0;">Material ' + i + '</label>'
+      + '<input type="text" class="form-input sm" id="mat' + i + '" placeholder="Material ' + i + '"></div>';
+  }
+  document.getElementById('matGrid').innerHTML = html;
+}
+
+function openAddModal() {
+  editMode = 'add'; editOrigName = '';
+  document.getElementById('editModalTitle').textContent = 'Add Configuration';
+  document.getElementById('cfgName').value = '';
+  buildMatGrid();
+  document.getElementById('saveBtn').textContent = 'Add Configuration';
+  document.getElementById('editModal').classList.add('show');
+  document.getElementById('cfgName').focus();
+}
+
+function openEditModal(name) {
+  editMode = 'edit'; editOrigName = name;
+  document.getElementById('editModalTitle').textContent = 'Edit Configuration';
+  document.getElementById('cfgName').value = name;
+  buildMatGrid();
+  const cfg = configs.find(c => (c['Configuration']||'').toString() === name);
+  if (cfg) {
+    for (let i = 1; i <= 10; i++) {
+      const val = (cfg['Major Material ' + i]||'').toString().trim();
+      document.getElementById('mat' + i).value = (val === '-' ? '' : val);
+    }
+  }
+  document.getElementById('saveBtn').textContent = 'Save Changes';
+  document.getElementById('editModal').classList.add('show');
+  document.getElementById('cfgName').focus();
+}
+
+function closeEditModal() { document.getElementById('editModal').classList.remove('show'); }
+
+async function saveConfig() {
+  const name = document.getElementById('cfgName').value.trim();
+  if (!name) { showToast('Configuration name is required', 'error'); return; }
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  const params = { action: editMode === 'edit' ? 'updateconfig' : 'addconfig', name: name };
+  if (editMode === 'edit') params.origname = editOrigName;
+  for (let i = 1; i <= 10; i++) {
+    params['mat' + i] = document.getElementById('mat' + i).value.trim();
+  }
+
+  try {
+    const json = await jsonpRequest(scriptUrl, params);
+    if (json.success) {
+      showToast(editMode === 'edit' ? 'Configuration updated' : 'Configuration added', 'success');
+      closeEditModal();
+      loadConfigs();
+    } else {
+      showToast(json.error || 'Failed', 'error');
+    }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = editMode === 'edit' ? 'Save Changes' : 'Add Configuration';
+}
+
+function openDeleteConfirm(name) {
+  deleteTarget = name;
+  document.getElementById('deleteName').textContent = name;
+  document.getElementById('deleteConfirm').classList.add('show');
+}
+
+function closeDeleteConfirm() { document.getElementById('deleteConfirm').classList.remove('show'); deleteTarget = ''; }
+
+async function confirmDelete() {
+  if (!deleteTarget) return;
+  const btn = document.getElementById('confirmDeleteBtn');
+  btn.disabled = true; btn.textContent = 'Deleting...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'deleteconfig', name: deleteTarget });
+    if (json.success) {
+      showToast('Configuration "' + deleteTarget + '" deleted', 'success');
+      closeDeleteConfirm();
+      loadConfigs();
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Delete';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+loadConfigs();
+</script>

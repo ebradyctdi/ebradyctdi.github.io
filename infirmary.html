@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWAT - Infirmary</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand h2 { font-size: 16px; font-weight: 700; }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #dc3545; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #b71c1c 0%, #d32f2f 100%); color: white; padding: 16px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 960px; margin: 0 auto; padding: 24px; width: 100%; }
+  .card { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+  .po-table { width: 100%; border-collapse: collapse; }
+  .po-table th { background: #b71c1c; color: white; padding: 10px 12px; font-size: 11px; text-transform: uppercase; text-align: left; }
+  .po-table td { padding: 12px; font-size: 14px; border-bottom: 1px solid #eee; }
+  .po-table tr:hover td { background: #fff5f5; }
+  .po-table .po-num { font-weight: 600; font-family: Consolas, monospace; color: #1a3a5c; cursor: pointer; text-decoration: underline; }
+  .po-table .po-num:hover { color: #dc3545; }
+  .po-table .meta { font-size: 12px; color: #888; font-family: Consolas, monospace; }
+  .badge-inf { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; background: #f8d7da; color: #721c24; }
+  .empty-state { text-align: center; padding: 40px 20px; color: #aaa; font-size: 14px; }
+  .refresh-btn { padding: 8px 16px; background: white; color: #1a3a5c; border: 1px solid #1a3a5c; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .refresh-btn:hover { background: #f0f2f5; }
+  .send-btn { padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .send-btn:hover { background: #c82333; }
+  .send-btn:disabled { background: #ccc; }
+
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; padding: 0; max-width: 560px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); overflow: hidden; max-height: 80vh; display: flex; flex-direction: column; }
+  .modal-header { padding: 16px 24px; color: white; }
+  .modal-header h3 { font-size: 16px; }
+  .modal-header .modal-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; }
+  .modal-footer button { padding: 8px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .btn-cancel { background: #e9ecef; color: #333; }
+  .btn-cancel:hover { background: #dee2e6; }
+  .btn-confirm { background: #dc3545; color: white; }
+  .btn-confirm:hover { background: #c82333; }
+  .btn-confirm:disabled { background: #ccc; }
+  .btn-add-note { background: #1a3a5c; color: white; }
+  .btn-add-note:hover { background: #244d73; }
+
+  .note-item { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+  .note-item:last-child { border-bottom: none; }
+  .note-time { font-size: 11px; color: #888; font-family: Consolas, monospace; }
+  .note-text { font-size: 13px; margin-top: 4px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">AWAT - Alburtis, PA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Views</div>
+    <a href="overview.html"><span class="icon">🏠</span> Overview</a>
+    <a href="wip.html"><span class="icon">🏭</span> WIP</a>
+    <a href="infirmary.html" class="active"><span class="icon">🏥</span> Infirmary</a>
+    <a href="history.html"><span class="icon">📜</span> Ship History</a>
+    <div class="nav-section">Apps</div>
+    <a href="receive-order.html"><span class="icon">📦</span> Receive Order</a>
+    <a href="start-build.html"><span class="icon">🔨</span> Start Build</a>
+    <a href="material-info.html"><span class="icon">📋</span> Material Info</a>
+    <a href="build-complete.html"><span class="icon">✅</span> Build Complete</a>
+    <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
+    <a href="ship-out.html"><span class="icon">🚚</span> Ship Out</a>
+    <a href="photo-capture.html"><span class="icon">📸</span> Photo Capture</a>
+    <div class="nav-section">System</div>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    <a href="configurations.html"><span class="icon">🗂️</span> Configurations</a>
+  </div>
+</nav>
+<div class="main-wrap">
+  <div class="header">
+    <div><h1>Infirmary</h1><div class="header-sub">Units with issues requiring attention</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <!-- SEND TO INFIRMARY -->
+    <div class="card">
+      <h2 style="font-size:16px;color:#b71c1c;margin-bottom:14px;border-bottom:2px solid #b71c1c;padding-bottom:8px;">Send to Infirmary</h2>
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Select PO (WIP)</label>
+          <select id="poSelect" style="width:100%;padding:10px 14px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;background:white;">
+            <option value="">— Select a PO —</option>
+          </select>
+        </div>
+        <button class="send-btn" id="sendBtn" onclick="openSendModal()">Send to Infirmary</button>
+      </div>
+    </div>
+
+    <!-- INFIRMARY LIST -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="font-size:16px;color:#b71c1c;margin:0;">In Infirmary <span id="infCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
+        <button class="refresh-btn" onclick="loadData()">Refresh</button>
+      </div>
+      <div id="infList"><div class="empty-state">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SEND MODAL -->
+<div class="modal-overlay" id="sendModal" onclick="if(event.target===this)closeSendModal()">
+  <div class="modal">
+    <div class="modal-header" style="background:#b71c1c;">
+      <h3>Send to Infirmary</h3>
+      <div class="modal-sub" id="sendModalPO"></div>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:#666;margin-bottom:12px;">This will change the PO status to "In Infirmary". Please describe the issue:</p>
+      <textarea id="sendNote" rows="4" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:13px;font-family:'Segoe UI',Arial,sans-serif;resize:vertical;" placeholder="Describe the issue..."></textarea>
+      <div id="sendNoteError" style="font-size:11px;color:#dc3545;margin-top:4px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeSendModal()">Cancel</button>
+      <button class="btn-confirm" id="sendConfirmBtn" onclick="confirmSend()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTES MODAL -->
+<div class="modal-overlay" id="notesModal" onclick="if(event.target===this)closeNotesModal()">
+  <div class="modal">
+    <div class="modal-header" style="background:#1a3a5c;">
+      <h3 id="notesModalTitle">PO Notes</h3>
+      <div class="modal-sub" id="notesModalSub"></div>
+    </div>
+    <div class="modal-body">
+      <div id="notesList"></div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid #eee;">
+        <label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:6px;">Add Note:</label>
+        <textarea id="addNoteText" rows="2" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;resize:vertical;" placeholder="Add a note..."></textarea>
+        <button class="btn-add-note" id="addNoteBtn" onclick="addNote()" style="margin-top:8px;">Add Note</button>
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:2px solid #28a745;">
+        <label style="display:block;font-size:12px;font-weight:600;color:#1b5e20;margin-bottom:6px;">Move from Infirmary:</label>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+          <select id="moveStatus" style="flex:1;min-width:180px;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;background:white;">
+            <option value="Received, Awaiting Start">Received, Awaiting Start</option>
+            <option value="In Assembly">In Assembly</option>
+            <option value="Awaiting QC">Awaiting QC</option>
+            <option value="QC Passed">QC Passed</option>
+          </select>
+          <button id="moveBtn" onclick="openMoveConfirm()" style="padding:8px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:600;">Move</button>
+        </div>
+        <div id="moveNoteWrap" style="display:none;margin-top:8px;">
+          <textarea id="moveNote" rows="2" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font-size:13px;resize:vertical;" placeholder="Optional note for this move..."></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button onclick="cancelMove()" style="padding:6px 16px;background:#e9ecef;color:#333;border:none;border-radius:4px;cursor:pointer;font-size:12px;">Cancel</button>
+            <button id="confirmMoveBtn" onclick="confirmMove()" style="padding:6px 16px;background:#28a745;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">Confirm Move</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeNotesModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+</body>
+</html>
+
+<script>
+const URL_KEY = 'awat_script_url';
+let scriptUrl = '', allOrders = [], wipOrders = [], infirmaryOrders = [], selectedSendPO = null, selectedNotesPO = null, _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbyTbbDk63asOIioURSmlNo558BqHiHqmsXtq06RDmK0FJ4oCLYZdA-wsWfDDEKdxNwp/exec'; } catch(e) {}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const s = str.toString().trim(); if (!s) return '—';
+  const d = new Date(s); if (isNaN(d.getTime())) return s;
+  return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Request timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+async function loadData() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const json = await jsonpRequest(scriptUrl, {});
+    if (json.success) {
+      setStatus('connected', 'Connected');
+      allOrders = json.data || [];
+      wipOrders = allOrders.filter(o => { const s = (o['Status']||'').toString().trim(); return s !== 'Tender' && s !== 'In Infirmary'; });
+      infirmaryOrders = allOrders.filter(o => (o['Status']||'').toString().trim() === 'In Infirmary');
+      renderPOSelect();
+      renderInfirmary();
+    } else { throw new Error(json.error); }
+  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+}
+
+function renderPOSelect() {
+  const sel = document.getElementById('poSelect');
+  sel.innerHTML = '<option value="">— Select a PO (' + wipOrders.length + ' in WIP) —</option>';
+  wipOrders.forEach(o => {
+    const po = (o['PO Number']||'').toString();
+    const status = (o['Status']||'').toString();
+    const config = (o['Configuration']||'').toString();
+    sel.innerHTML += '<option value="' + po + '">' + po + ' — ' + status + (config ? ' — ' + config : '') + '</option>';
+  });
+}
+
+function renderInfirmary() {
+  const container = document.getElementById('infList');
+  document.getElementById('infCount').textContent = infirmaryOrders.length ? '(' + infirmaryOrders.length + ')' : '';
+  if (!infirmaryOrders.length) {
+    container.innerHTML = '<div class="empty-state">No units in infirmary. All clear.</div>';
+    return;
+  }
+  let html = '<table class="po-table"><thead><tr><th>PO Number</th><th>Configuration</th><th>Location</th><th>Status</th></tr></thead><tbody>';
+  infirmaryOrders.forEach(o => {
+    const po = (o['PO Number']||'').toString();
+    const config = (o['Configuration']||'').toString();
+    const loc = (o['Location']||'').toString();
+    html += '<tr>'
+      + '<td class="po-num" onclick="openNotesModal(\'' + po.replace(/'/g,"\\'") + '\')">' + po + '</td>'
+      + '<td class="meta">' + (config||'—') + '</td>'
+      + '<td class="meta">' + (loc||'—') + '</td>'
+      + '<td><span class="badge-inf">In Infirmary</span></td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// ---- SEND TO INFIRMARY ----
+function openSendModal() {
+  const po = document.getElementById('poSelect').value;
+  if (!po) { showToast('Select a PO first', 'error'); return; }
+  selectedSendPO = po;
+  document.getElementById('sendModalPO').textContent = 'PO#' + po;
+  document.getElementById('sendNote').value = '';
+  document.getElementById('sendNoteError').textContent = '';
+  document.getElementById('sendConfirmBtn').disabled = false;
+  document.getElementById('sendConfirmBtn').textContent = 'Confirm';
+  document.getElementById('sendModal').classList.add('show');
+  setTimeout(() => document.getElementById('sendNote').focus(), 100);
+}
+
+function closeSendModal() { document.getElementById('sendModal').classList.remove('show'); selectedSendPO = null; }
+
+async function confirmSend() {
+  const note = document.getElementById('sendNote').value.trim();
+  if (!note) {
+    document.getElementById('sendNoteError').textContent = 'A note is required.';
+    document.getElementById('sendNote').style.borderColor = '#dc3545';
+    document.getElementById('sendNote').focus();
+    return;
+  }
+  const btn = document.getElementById('sendConfirmBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'toinfirmary', po: selectedSendPO, note: note });
+    if (json.success) {
+      showToast('PO#' + selectedSendPO + ' sent to Infirmary', 'success');
+      closeSendModal();
+      loadData();
+    } else {
+      showToast(json.error || 'Failed', 'error');
+      btn.disabled = false; btn.textContent = 'Confirm';
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+    btn.disabled = false; btn.textContent = 'Confirm';
+  }
+}
+
+// ---- NOTES MODAL ----
+function openNotesModal(po) {
+  selectedNotesPO = po;
+  document.getElementById('notesModalTitle').textContent = 'PO#' + po + ' — Infirmary Notes';
+  const order = allOrders.find(o => (o['PO Number']||'').toString() === po);
+  document.getElementById('notesModalSub').textContent = order ? ((order['Configuration']||'') + (order['Location'] ? ' @ ' + order['Location'] : '')) : '';
+  document.getElementById('notesList').innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;">Loading notes...</div>';
+  document.getElementById('addNoteText').value = '';
+  document.getElementById('notesModal').classList.add('show');
+  loadNotes(po);
+}
+
+function closeNotesModal() { document.getElementById('notesModal').classList.remove('show'); selectedNotesPO = null; }
+
+async function loadNotes(po) {
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readinfirmarynotes', po: po });
+    if (json.success) {
+      const notes = json.data || [];
+      if (!notes.length) {
+        document.getElementById('notesList').innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;">No notes yet.</div>';
+      } else {
+        document.getElementById('notesList').innerHTML = notes.map(n =>
+          '<div class="note-item"><div class="note-time">' + fmtDate(n['Timestamp']) + '</div><div class="note-text">' + (n['Note']||'').toString().replace(/</g,'&lt;') + '</div></div>'
+        ).join('');
+      }
+    }
+  } catch(err) {
+    document.getElementById('notesList').innerHTML = '<div style="color:#dc3545;">Error loading notes.</div>';
+  }
+}
+
+async function addNote() {
+  if (!selectedNotesPO) return;
+  const text = document.getElementById('addNoteText').value.trim();
+  if (!text) { showToast('Enter a note', 'error'); return; }
+  const btn = document.getElementById('addNoteBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'addinfirmarynote', po: selectedNotesPO, note: text });
+    if (json.success) {
+      document.getElementById('addNoteText').value = '';
+      showToast('Note added', 'success');
+      loadNotes(selectedNotesPO);
+    } else { showToast(json.error || 'Failed', 'error'); }
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Add Note';
+}
+
+function openMoveConfirm() {
+  document.getElementById('moveNoteWrap').style.display = 'block';
+  document.getElementById('moveNote').value = '';
+  document.getElementById('moveNote').focus();
+}
+
+function cancelMove() {
+  document.getElementById('moveNoteWrap').style.display = 'none';
+}
+
+async function confirmMove() {
+  if (!selectedNotesPO) return;
+  const newStatus = document.getElementById('moveStatus').value;
+  const note = document.getElementById('moveNote').value.trim();
+  const btn = document.getElementById('confirmMoveBtn');
+  btn.disabled = true; btn.textContent = 'Moving...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'movefrominf', po: selectedNotesPO, newstatus: newStatus, note: note });
+    if (json.success) {
+      showToast('PO#' + selectedNotesPO + ' moved to ' + newStatus, 'success');
+      closeNotesModal();
+      loadData();
+    } else {
+      showToast(json.error || 'Failed', 'error');
+      btn.disabled = false; btn.textContent = 'Confirm Move';
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+    btn.disabled = false; btn.textContent = 'Confirm Move';
+  }
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+loadData();
+</script>

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWAT - Material Info Capture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand h2 { font-size: 16px; font-weight: 700; }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #6f42c1; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 16px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 900px; margin: 0 auto; padding: 24px; width: 100%; }
+  .card { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+  .po-select-row { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+  .po-select-row select { padding: 10px 14px; border: 2px solid #ddd; border-radius: 6px; font-size: 15px; font-family: Consolas, monospace; min-width: 220px; }
+  .po-select-row select:focus { border-color: #1a3a5c; outline: none; }
+  .po-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #e8f0fe; color: #1a3a5c; }
+  .mat-entry { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+  .mat-entry:last-child { border-bottom: none; }
+  .mat-label { font-size: 13px; font-weight: 600; color: #1a3a5c; min-width: 200px; font-family: Consolas, monospace; }
+  .mat-input { flex: 1; padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: Consolas, monospace; }
+  .mat-input:focus { border-color: #6f42c1; outline: none; background: #f8f5ff; }
+  .mat-saved { color: #28a745; font-size: 12px; margin-left: 8px; }
+  .save-btn { padding: 12px 32px; background: #6f42c1; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .save-btn:hover { background: #5a32a3; }
+  .save-btn:disabled { background: #ccc; cursor: default; }
+  .extra-row { display: flex; gap: 8px; align-items: center; padding: 10px 0; }
+  .extra-input { padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 13px; font-family: Consolas, monospace; }
+  .extra-input:focus { border-color: #6f42c1; outline: none; }
+  .add-extra-btn { padding: 8px 16px; background: #e9ecef; color: #333; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; }
+  .add-extra-btn:hover { background: #dee2e6; }
+  .mat-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .mat-table th { background: #f0f2f5; padding: 8px 12px; font-size: 11px; text-transform: uppercase; color: #666; text-align: left; }
+  .mat-table td { padding: 10px 12px; font-size: 14px; border-bottom: 1px solid #eee; font-family: Consolas, monospace; }
+  .mat-table tr:hover td { background: #f8f9fa; }
+  .empty-state { text-align: center; padding: 40px 20px; color: #aaa; font-size: 14px; }
+  .refresh-btn { padding: 8px 16px; background: white; color: #1a3a5c; border: 1px solid #1a3a5c; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .refresh-btn:hover { background: #f0f2f5; }
+  .section-label { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; margin: 16px 0 8px; letter-spacing: 0.5px; }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">AWAT - Alburtis, PA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Views</div>
+    <a href="overview.html"><span class="icon">🏠</span> Overview</a>
+    <a href="wip.html"><span class="icon">🏭</span> WIP</a>
+    <a href="infirmary.html"><span class="icon">🏥</span> Infirmary</a>
+    <a href="history.html"><span class="icon">📜</span> Ship History</a>
+    <div class="nav-section">Apps</div>
+    <a href="receive-order.html"><span class="icon">📦</span> Receive Order</a>
+    <a href="start-build.html"><span class="icon">🔨</span> Start Build</a>
+    <a href="material-info.html" class="active"><span class="icon">📋</span> Material Info</a>
+    <a href="build-complete.html"><span class="icon">✅</span> Build Complete</a>
+    <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
+    <a href="ship-out.html"><span class="icon">🚚</span> Ship Out</a>
+    <a href="photo-capture.html"><span class="icon">📸</span> Photo Capture</a>
+    <div class="nav-section">System</div>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    <a href="configurations.html"><span class="icon">🗂️</span> Configurations</a>
+  </div>
+</nav>
+<div class="main-wrap">
+  <div class="header">
+    <div><h1>Material Info Capture</h1><div class="header-sub">Record serial numbers for major materials</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <div class="card">
+      <h2>Select PO</h2>
+      <div class="po-select-row">
+        <select id="poSelect" onchange="onPOChange()"><option value="">— Select a PO —</option></select>
+        <button class="refresh-btn" onclick="loadOrders()">Refresh</button>
+      </div>
+    </div>
+    <div class="card" id="captureCard" style="display:none;">
+      <h2>Record Serials <span class="po-badge" id="selectedPOBadge"></span></h2>
+      <div class="section-label">Configuration Materials</div>
+      <div id="configMats"><div class="empty-state">No configuration materials found.</div></div>
+      <div id="extraMatsSection">
+        <div class="section-label" style="margin-top:20px;">Extra Materials</div>
+        <div id="extraMats"></div>
+        <button class="add-extra-btn" onclick="addExtraRow()" style="margin-top:8px;">+ Add Extra Material</button>
+      </div>
+      <div style="margin-top:20px;display:flex;gap:12px;">
+        <button class="save-btn" id="saveAllBtn" onclick="saveAll()">Save All Serials</button>
+        <span id="saveStatus" style="align-self:center;font-size:13px;color:#888;"></span>
+      </div>
+      <div style="margin-top:24px;border-top:2px solid #eee;padding-top:16px;">
+        <div class="section-label">Recorded Materials</div>
+        <div id="matList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+
+<!-- EDIT MATERIAL MODAL -->
+<div id="editMatModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:300;align-items:center;justify-content:center;" onclick="if(event.target===this)closeEditMat()">
+  <div style="background:white;border-radius:12px;max-width:440px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="background:#1a3a5c;color:white;padding:16px 24px;">
+      <h3 style="font-size:16px;" id="editMatTitle">Edit Material</h3>
+      <div style="font-size:12px;opacity:0.7;margin-top:2px;" id="editMatComponent"></div>
+    </div>
+    <div style="padding:20px 24px;">
+      <label style="display:block;font-size:12px;font-weight:600;color:#666;margin-bottom:6px;">Serial Number</label>
+      <input type="text" id="editMatSerial" style="width:100%;padding:10px 12px;border:2px solid #ddd;border-radius:6px;font-size:14px;font-family:Consolas,monospace;" autocomplete="off">
+      <div style="margin-top:20px;display:flex;gap:10px;justify-content:space-between;">
+        <button onclick="confirmDeleteMat()" style="padding:8px 16px;background:#fce4ec;color:#b71c1c;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Remove Entry</button>
+        <div style="display:flex;gap:8px;">
+          <button onclick="closeEditMat()" style="padding:8px 20px;background:#e9ecef;color:#333;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Cancel</button>
+          <button id="editMatSaveBtn" onclick="confirmUpdateMat()" style="padding:8px 20px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirmModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:400;align-items:center;justify-content:center;" onclick="if(event.target===this)closeConfirm()">
+  <div style="background:white;border-radius:10px;padding:28px;max-width:380px;width:90%;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,0.25);">
+    <h3 style="font-size:16px;margin-bottom:8px;" id="confirmTitle">Confirm</h3>
+    <p style="font-size:13px;color:#666;margin-bottom:20px;" id="confirmMsg"></p>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button onclick="closeConfirm()" style="padding:8px 24px;background:#e9ecef;color:#333;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Cancel</button>
+      <button id="confirmActionBtn" style="padding:8px 24px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">Confirm</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+
+<script>
+const URL_KEY = 'awat_script_url';
+let scriptUrl = '', assemblyOrders = [], allConfigs = [], selectedPO = '', selectedConfig = '', configMaterials = [], materials = [], extraCount = 0, _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbyTbbDk63asOIioURSmlNo558BqHiHqmsXtq06RDmK0FJ4oCLYZdA-wsWfDDEKdxNwp/exec'; } catch(e) {}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const s = str.toString().trim(); if (!s) return '—';
+  const d = new Date(s); if (isNaN(d.getTime())) return s;
+  return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Request timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+async function loadOrders() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL configured'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const [ordersJson, configsJson] = await Promise.all([
+      jsonpRequest(scriptUrl, {}),
+      jsonpRequest(scriptUrl, { action: 'readconfigs' })
+    ]);
+    if (ordersJson.success) {
+      setStatus('connected', 'Connected');
+      assemblyOrders = (ordersJson.data || []).filter(r => (r['Status']||'').toString().trim() === 'In Assembly');
+      renderPOSelect();
+    }
+    if (configsJson.success) {
+      allConfigs = configsJson.data || [];
+    }
+  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+}
+
+function renderPOSelect() {
+  const sel = document.getElementById('poSelect');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Select a PO (' + assemblyOrders.length + ' in assembly) —</option>';
+  assemblyOrders.forEach(o => {
+    const po = (o['PO Number']||'').toString();
+    const config = (o['Configuration']||'').toString();
+    const loc = (o['Location']||'').toString();
+    sel.innerHTML += '<option value="' + po + '" data-config="' + config + '">' + po + (config ? ' — ' + config : '') + (loc ? ' @ ' + loc : '') + '</option>';
+  });
+  if (current && assemblyOrders.some(o => o['PO Number'].toString() === current)) sel.value = current;
+}
+
+function onPOChange() {
+  selectedPO = document.getElementById('poSelect').value;
+  const card = document.getElementById('captureCard');
+  extraCount = 0;
+  if (!selectedPO) { card.style.display = 'none'; return; }
+
+  card.style.display = 'block';
+  document.getElementById('selectedPOBadge').textContent = 'PO#' + selectedPO;
+  document.getElementById('saveStatus').textContent = '';
+
+  // Find the config for this PO
+  const opt = document.getElementById('poSelect').selectedOptions[0];
+  selectedConfig = opt ? opt.getAttribute('data-config') : '';
+  configMaterials = [];
+
+  if (selectedConfig) {
+    const cfg = allConfigs.find(c => (c['Configuration']||'').toString().trim() === selectedConfig);
+    if (cfg) {
+      for (let i = 1; i <= 10; i++) {
+        const m = (cfg['Major Material ' + i]||'').toString().trim();
+        if (m && m !== '-') configMaterials.push(m);
+      }
+    }
+  }
+
+  renderConfigMats();
+  document.getElementById('extraMats').innerHTML = '';
+  loadMaterials();
+}
+
+function renderConfigMats() {
+  const container = document.getElementById('configMats');
+  if (!configMaterials.length) {
+    container.innerHTML = '<div style="font-size:13px;color:#aaa;padding:8px 0;">No configuration assigned or no major materials defined.</div>';
+    return;
+  }
+  container.innerHTML = configMaterials.map((m, i) =>
+    '<div class="mat-entry">'
+    + '<div class="mat-label">' + m + '</div>'
+    + '<input type="text" class="mat-input" id="cfgSerial_' + i + '" placeholder="Scan serial number..." autocomplete="off">'
+    + '</div>'
+  ).join('');
+
+  // Set up Enter key to advance between fields
+  configMaterials.forEach((m, i) => {
+    document.getElementById('cfgSerial_' + i).addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const next = document.getElementById('cfgSerial_' + (i + 1));
+        if (next) next.focus();
+        else document.getElementById('saveAllBtn').focus();
+      }
+    });
+  });
+
+  if (configMaterials.length) document.getElementById('cfgSerial_0').focus();
+}
+
+function addExtraRow() {
+  const idx = extraCount++;
+  const div = document.createElement('div');
+  div.className = 'extra-row';
+  div.innerHTML = '<input type="text" class="extra-input" id="extraName_' + idx + '" placeholder="Material name" style="min-width:180px;">'
+    + '<input type="text" class="extra-input" id="extraSerial_' + idx + '" placeholder="Serial number" style="flex:1;">';
+  document.getElementById('extraMats').appendChild(div);
+  document.getElementById('extraName_' + idx).focus();
+
+  // Enter advances from name to serial to next extra or save
+  document.getElementById('extraName_' + idx).addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('extraSerial_' + idx).focus(); }
+  });
+  document.getElementById('extraSerial_' + idx).addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('saveAllBtn').focus(); }
+  });
+}
+
+async function saveAll() {
+  if (!selectedPO) return;
+  const btn = document.getElementById('saveAllBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  document.getElementById('saveStatus').textContent = '';
+
+  let saved = 0, total = 0;
+
+  // Save config material serials
+  for (let i = 0; i < configMaterials.length; i++) {
+    const serial = document.getElementById('cfgSerial_' + i).value.trim();
+    if (serial) {
+      total++;
+      try {
+        const json = await jsonpRequest(scriptUrl, { action: 'materialinfo', po: selectedPO, component: configMaterials[i], serial: serial });
+        if (json.success) saved++;
+      } catch(err) {}
+    }
+  }
+
+  // Save extra materials
+  for (let i = 0; i < extraCount; i++) {
+    const nameEl = document.getElementById('extraName_' + i);
+    const serialEl = document.getElementById('extraSerial_' + i);
+    if (!nameEl || !serialEl) continue;
+    const name = nameEl.value.trim();
+    const serial = serialEl.value.trim();
+    if (name) {
+      total++;
+      try {
+        const json = await jsonpRequest(scriptUrl, { action: 'materialinfo', po: selectedPO, component: name, serial: serial });
+        if (json.success) saved++;
+      } catch(err) {}
+    }
+  }
+
+  btn.disabled = false; btn.textContent = 'Save All Serials';
+
+  if (total === 0) {
+    showToast('No serials to save — enter at least one', 'warning');
+  } else {
+    showToast(saved + ' of ' + total + ' materials saved', saved === total ? 'success' : 'warning');
+    document.getElementById('saveStatus').textContent = '✓ ' + saved + ' saved';
+    // Clear inputs
+    for (let i = 0; i < configMaterials.length; i++) {
+      const el = document.getElementById('cfgSerial_' + i);
+      if (el) el.value = '';
+    }
+    document.getElementById('extraMats').innerHTML = '';
+    extraCount = 0;
+    loadMaterials();
+  }
+}
+
+async function loadMaterials() {
+  if (!scriptUrl || !selectedPO) return;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'materialread', po: selectedPO });
+    if (json.success) {
+      materials = json.data || [];
+      renderMaterials();
+    }
+  } catch(err) {}
+}
+
+function renderMaterials() {
+  const container = document.getElementById('matList');
+  if (!materials.length) {
+    container.innerHTML = '<div class="empty-state">No materials recorded for this PO yet.</div>';
+    return;
+  }
+  let html = '<table class="mat-table"><thead><tr><th>#</th><th>Component</th><th>Serial Number</th><th>Timestamp</th><th></th></tr></thead><tbody>';
+  materials.forEach((m, i) => {
+    const row = m['_row'] || 0;
+    const comp = (m['Component']||'').toString();
+    const serial = (m['Serial Number']||'').toString();
+    html += '<tr><td style="color:#888;">' + (i+1) + '</td>'
+      + '<td style="font-weight:600;">' + comp + '</td>'
+      + '<td>' + (serial || '—') + '</td>'
+      + '<td style="font-size:12px;color:#888;">' + fmtDate(m['Timestamp']) + '</td>'
+      + '<td style="text-align:right;"><button onclick="openEditMat(' + row + ',\'' + comp.replace(/'/g,"\\'") + '\',\'' + serial.replace(/'/g,"\\'") + '\')" style="padding:4px 12px;background:#e3f2fd;color:#0d47a1;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;">Edit</button></td></tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// ---- EDIT MATERIAL ----
+let editMatRow = 0, pendingAction = null;
+
+function openEditMat(row, component, serial) {
+  editMatRow = row;
+  document.getElementById('editMatTitle').textContent = 'Edit Material';
+  document.getElementById('editMatComponent').textContent = component;
+  document.getElementById('editMatSerial').value = serial;
+  document.getElementById('editMatModal').style.display = 'flex';
+  document.getElementById('editMatSerial').focus();
+}
+
+function closeEditMat() { document.getElementById('editMatModal').style.display = 'none'; }
+
+function confirmUpdateMat() {
+  const newSerial = document.getElementById('editMatSerial').value.trim();
+  const comp = document.getElementById('editMatComponent').textContent;
+  pendingAction = async function() {
+    try {
+      const json = await jsonpRequest(scriptUrl, { action: 'updatematerial', row: editMatRow, serial: newSerial });
+      if (json.success) { showToast('Serial updated', 'success'); closeEditMat(); loadMaterials(); }
+      else showToast(json.error || 'Failed', 'error');
+    } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  };
+  showConfirm('Update Serial?', 'Change serial for "' + comp + '" to "' + (newSerial || '(empty)') + '"?', '#28a745', 'Update');
+}
+
+function confirmDeleteMat() {
+  const comp = document.getElementById('editMatComponent').textContent;
+  pendingAction = async function() {
+    try {
+      const json = await jsonpRequest(scriptUrl, { action: 'deletematerial', row: editMatRow });
+      if (json.success) { showToast('Material entry removed', 'success'); closeEditMat(); loadMaterials(); }
+      else showToast(json.error || 'Failed', 'error');
+    } catch(err) { showToast('Error: ' + err.message, 'error'); }
+  };
+  showConfirm('Remove Material?', 'Remove "' + comp + '" from this PO? This cannot be undone.', '#dc3545', 'Remove');
+}
+
+function showConfirm(title, msg, color, btnText) {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  const btn = document.getElementById('confirmActionBtn');
+  btn.textContent = btnText;
+  btn.style.background = color;
+  btn.style.color = 'white';
+  btn.onclick = function() { closeConfirm(); if (pendingAction) pendingAction(); };
+  document.getElementById('confirmModal').style.display = 'flex';
+}
+
+function closeConfirm() { document.getElementById('confirmModal').style.display = 'none'; pendingAction = null; }
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+loadOrders();
+</script>
