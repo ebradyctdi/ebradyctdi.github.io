@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWAT - Photo Capture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #e91e63; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 16px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 900px; margin: 0 auto; padding: 24px; width: 100%; }
+  .card { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+  .po-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #e8f0fe; color: #1a3a5c; }
+  .refresh-btn { padding: 8px 16px; background: white; color: #1a3a5c; border: 1px solid #1a3a5c; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .refresh-btn:hover { background: #f0f2f5; }
+
+  .capture-area { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .capture-btn { padding: 14px 24px; border: 2px dashed #ccc; border-radius: 8px; background: #fafafa; cursor: pointer; text-align: center; flex: 1; min-width: 180px; transition: all 0.15s; }
+  .capture-btn:hover { border-color: #1a3a5c; background: #f0f4ff; }
+  .capture-btn .icon { font-size: 28px; margin-bottom: 6px; }
+  .capture-btn .text { font-size: 13px; color: #666; }
+
+  .preview-area { display: none; margin-bottom: 16px; }
+  .preview-img { max-width: 100%; max-height: 300px; border-radius: 8px; border: 2px solid #ddd; }
+  .preview-controls { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
+  .label-input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; width: 200px; }
+  .label-input:focus { border-color: #1a3a5c; outline: none; }
+  .upload-btn { padding: 10px 24px; background: #e91e63; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .upload-btn:hover { background: #c2185b; }
+  .upload-btn:disabled { background: #ccc; }
+  .cancel-btn { padding: 10px 16px; background: #e9ecef; color: #333; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
+  .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+  .photo-card { border-radius: 8px; overflow: hidden; border: 1px solid #e0e0e0; background: white; cursor: pointer; transition: all 0.15s; }
+  .photo-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); transform: translateY(-2px); }
+  .photo-card img { width: 100%; height: 140px; object-fit: cover; display: block; }
+  .photo-card .info { padding: 8px 10px; }
+  .photo-card .name { font-size: 11px; font-weight: 600; color: #333; word-break: break-all; }
+  .photo-card .date { font-size: 10px; color: #888; margin-top: 2px; }
+  .empty-state { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+
+  .progress-bar { height: 4px; background: #e9ecef; border-radius: 2px; margin-top: 8px; overflow: hidden; display: none; }
+  .progress-fill { height: 100%; background: #e91e63; border-radius: 2px; transition: width 0.3s; }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">AWAT - Alburtis, PA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Views</div>
+    <a href="overview.html"><span class="icon">🏠</span> Overview</a>
+    <a href="wip.html"><span class="icon">🏭</span> WIP</a>
+    <a href="infirmary.html"><span class="icon">🏥</span> Infirmary</a>
+    <a href="history.html"><span class="icon">📜</span> Ship History</a>
+    <div class="nav-section">Apps</div>
+    <a href="receive-order.html"><span class="icon">📦</span> Receive Order</a>
+    <a href="start-build.html"><span class="icon">🔨</span> Start Build</a>
+    <a href="material-info.html"><span class="icon">📋</span> Material Info</a>
+    <a href="build-complete.html"><span class="icon">✅</span> Build Complete</a>
+    <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
+    <a href="ship-out.html"><span class="icon">🚚</span> Ship Out</a>
+    <a href="photo-capture.html" class="active"><span class="icon">📸</span> Photo Capture</a>
+    <div class="nav-section">System</div>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    <a href="configurations.html"><span class="icon">🗂️</span> Configurations</a>
+  </div>
+</nav>
+<div class="main-wrap">
+  <div class="header">
+    <div><h1>Photo Capture</h1><div class="header-sub">Take or upload photos for POs — saved to Google Drive</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <div class="card">
+      <h2>Select PO</h2>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <select id="poSelect" onchange="onPOChange()" style="padding:10px 14px;border:2px solid #ddd;border-radius:6px;font-size:15px;font-family:Consolas,monospace;min-width:300px;">
+          <option value="">— Select a PO —</option>
+        </select>
+        <button class="refresh-btn" onclick="loadOrders()">Refresh</button>
+      </div>
+    </div>
+    <div class="card" id="captureCard" style="display:none;">
+      <h2>Capture Photo <span class="po-badge" id="selectedPOBadge"></span></h2>
+      <div class="capture-area">
+        <div class="capture-btn" onclick="openCamera()">
+          <div class="icon">📷</div>
+          <div class="text">Take Photo (Webcam)</div>
+        </div>
+        <label class="capture-btn">
+          <div class="icon">📁</div>
+          <div class="text">Choose File</div>
+          <input type="file" accept="image/*" style="display:none;" onchange="onFileSelected(event)">
+        </label>
+      </div>
+      <div style="margin-bottom:12px;"><button onclick="testDrive()" style="padding:6px 14px;background:#e9ecef;color:#333;border:none;border-radius:4px;cursor:pointer;font-size:11px;">Test Drive Connection</button> <span id="testResult" style="font-size:11px;color:#888;"></span></div>
+      <div class="preview-area" id="previewArea">
+        <img id="previewImg" class="preview-img">
+        <div class="preview-controls">
+          <input type="text" class="label-input" id="photoLabel" placeholder="Label (e.g. front, serial, damage)">
+          <button class="upload-btn" id="uploadBtn" onclick="uploadPhoto()">Upload to Drive</button>
+          <button class="cancel-btn" onclick="cancelPreview()">Cancel</button>
+        </div>
+        <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill" style="width:0%;"></div></div>
+      </div>
+    </div>
+    <div class="card" id="photosCard" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin:0;border:none;padding:0;">Photos <span id="photoCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
+        <button class="refresh-btn" onclick="loadPhotos()">Refresh</button>
+      </div>
+      <div id="photoGrid"><div class="empty-state">No photos yet.</div></div>
+    </div>
+  </div>
+</div>
+<!-- UPLOAD QUEUE STATUS -->
+<div id="uploadQueue" style="display:none;position:fixed;bottom:0;left:220px;right:0;background:white;border-top:2px solid #e0e0e0;padding:10px 24px;z-index:250;box-shadow:0 -2px 8px rgba(0,0,0,0.1);">
+  <div style="max-width:900px;margin:0 auto;display:flex;align-items:center;gap:12px;">
+    <div style="font-size:13px;font-weight:600;color:#1a3a5c;" id="queueLabel">Uploading...</div>
+    <div style="flex:1;height:6px;background:#e9ecef;border-radius:3px;overflow:hidden;"><div id="queueProgress" style="height:100%;background:#e91e63;border-radius:3px;transition:width 0.3s;width:0%;"></div></div>
+    <div style="font-size:11px;color:#888;" id="queueDetail"></div>
+  </div>
+</div>
+
+<!-- WEBCAM MODAL -->
+<div id="camModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:300;align-items:center;justify-content:center;flex-direction:column;">
+  <div style="background:#111;border-radius:12px;overflow:hidden;max-width:680px;width:95%;box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+    <div style="padding:12px 20px;background:#1a3a5c;color:white;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:14px;font-weight:600;">📷 Webcam Capture</span>
+      <button onclick="closeCamera()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;padding:0 4px;">✕</button>
+    </div>
+    <div style="position:relative;background:black;text-align:center;">
+      <video id="camVideo" autoplay playsinline style="width:100%;max-height:400px;display:block;"></video>
+      <canvas id="camCanvas" style="display:none;"></canvas>
+      <div id="camPreview" style="display:none;"><img id="camPreviewImg" style="width:100%;max-height:400px;display:block;"></div>
+    </div>
+    <div style="padding:14px 20px;background:#222;display:flex;gap:10px;justify-content:center;align-items:center;" id="camControls">
+      <select id="camSelect" onchange="switchCamera()" style="padding:6px 10px;border-radius:4px;font-size:12px;background:#333;color:white;border:1px solid #555;"></select>
+      <button id="snapBtn" onclick="snapPhoto()" style="padding:10px 32px;background:#e91e63;color:white;border:none;border-radius:50px;cursor:pointer;font-size:14px;font-weight:600;">Capture</button>
+    </div>
+    <div style="padding:14px 20px;background:#222;display:none;gap:10px;justify-content:center;" id="camRetakeControls">
+      <button onclick="retakePhoto()" style="padding:10px 24px;background:#555;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Retake</button>
+      <button onclick="useCamPhoto()" style="padding:10px 24px;background:#28a745;color:white;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">Use This Photo</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+</body>
+</html>
+
+<script>
+const URL_KEY = 'awat_script_url';
+let scriptUrl = '', allOrders = [], selectedPO = '', imageData = '', _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxqE9olA6Kn21Vy-pz3HSonRh3zf5dKuKfLGh-vQTQJ8gtL0yvYxAF78_1KkBA7EC_E/exec'; } catch(e) {}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Request timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+// ---- WEBCAM ----
+let camStream = null, camDevices = [], camSnapped = false;
+
+async function openCamera() {
+  const modal = document.getElementById('camModal');
+  modal.style.display = 'flex';
+  camSnapped = false;
+  document.getElementById('camControls').style.display = 'flex';
+  document.getElementById('camRetakeControls').style.display = 'none';
+  document.getElementById('camPreview').style.display = 'none';
+  document.getElementById('camVideo').style.display = 'block';
+
+  try {
+    // Get available cameras
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    camDevices = devices.filter(d => d.kind === 'videoinput');
+    const sel = document.getElementById('camSelect');
+    sel.innerHTML = camDevices.map((d, i) => '<option value="' + i + '">' + (d.label || 'Camera ' + (i+1)) + '</option>').join('');
+
+    await startStream(0);
+  } catch(err) {
+    showToast('Camera error: ' + err.message, 'error');
+    closeCamera();
+  }
+}
+
+async function startStream(idx) {
+  if (camStream) camStream.getTracks().forEach(t => t.stop());
+  const deviceId = camDevices[idx] ? camDevices[idx].deviceId : undefined;
+  const constraints = { video: deviceId ? { deviceId: { exact: deviceId } } : true };
+  camStream = await navigator.mediaDevices.getUserMedia(constraints);
+  document.getElementById('camVideo').srcObject = camStream;
+}
+
+async function switchCamera() {
+  const idx = parseInt(document.getElementById('camSelect').value);
+  await startStream(idx);
+}
+
+function snapPhoto() {
+  const video = document.getElementById('camVideo');
+  const canvas = document.getElementById('camCanvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const maxW = 1920;
+  let w = video.videoWidth, h = video.videoHeight;
+  if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+  document.getElementById('camPreviewImg').src = dataUrl;
+  document.getElementById('camVideo').style.display = 'none';
+  document.getElementById('camPreview').style.display = 'block';
+  document.getElementById('camControls').style.display = 'none';
+  document.getElementById('camRetakeControls').style.display = 'flex';
+  camSnapped = true;
+}
+
+function retakePhoto() {
+  camSnapped = false;
+  document.getElementById('camVideo').style.display = 'block';
+  document.getElementById('camPreview').style.display = 'none';
+  document.getElementById('camControls').style.display = 'flex';
+  document.getElementById('camRetakeControls').style.display = 'none';
+}
+
+function useCamPhoto() {
+  const dataUrl = document.getElementById('camPreviewImg').src;
+  imageData = dataUrl;
+  document.getElementById('previewImg').src = imageData;
+  document.getElementById('previewArea').style.display = 'block';
+  document.getElementById('photoLabel').value = '';
+  document.getElementById('photoLabel').focus();
+  closeCamera();
+}
+
+function closeCamera() {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  document.getElementById('camModal').style.display = 'none';
+}
+
+// POST request via hidden form + iframe (bypasses CORS for Apps Script)
+function postRequest(url, data) {
+  // For photo uploads, chunk the base64 data into JSONP-safe pieces
+  // and reassemble on the server side
+  if (data.action === 'uploadphoto') {
+    return uploadViaChunks(url, data);
+  }
+  // For listphotos, use JSONP since it's a small request
+  return jsonpRequest(url, data);
+}
+
+async function uploadViaChunks(url, data) {
+  const image = data.image || '';
+  const chunkSize = 4000; // 4KB chunks — proven to work
+  const chunks = [];
+  for (let i = 0; i < image.length; i += chunkSize) {
+    chunks.push(image.substring(i, i + chunkSize));
+  }
+
+  const uploadId = 'up_' + Date.now();
+  document.getElementById('progressFill').style.width = '5%';
+
+  // Send each chunk with longer timeout
+  for (let i = 0; i < chunks.length; i++) {
+    const pct = Math.round(((i + 1) / chunks.length) * 80) + 5;
+    document.getElementById('progressFill').style.width = pct + '%';
+    const resp = await jsonpLong(url, {
+      action: 'photochunk',
+      uploadId: uploadId,
+      chunkIndex: i.toString(),
+      totalChunks: chunks.length.toString(),
+      chunk: chunks[i]
+    });
+    if (!resp.success) throw new Error(resp.error || 'Chunk ' + i + ' failed');
+  }
+
+  document.getElementById('progressFill').style.width = '90%';
+
+  // Send assemble command with long timeout (Drive operations are slow)
+  const result = await jsonpLong(url, {
+    action: 'photoassemble',
+    uploadId: uploadId,
+    po: data.po,
+    label: data.label || 'photo',
+    totalChunks: chunks.length.toString()
+  });
+
+  return result;
+}
+
+// JSONP with longer timeout for photo operations
+function jsonpLong(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Request timed out')); }, 30000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+async function loadOrders() {
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+  setStatus('pending', 'Loading...');
+  try {
+    const json = await jsonpRequest(scriptUrl, {});
+    if (json.success) {
+      setStatus('connected', 'Connected');
+      allOrders = (json.data || []).filter(o => (o['Status']||'').toString().trim() !== 'Tender');
+      renderPOSelect();
+    } else { throw new Error(json.error); }
+  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+}
+
+function renderPOSelect() {
+  const sel = document.getElementById('poSelect');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Select a PO (' + allOrders.length + ' active) —</option>';
+  allOrders.forEach(o => {
+    const po = (o['PO Number']||'').toString();
+    const config = (o['Configuration']||'').toString();
+    const status = (o['Status']||'').toString();
+    sel.innerHTML += '<option value="' + po + '">' + po + (config ? ' — ' + config : '') + ' [' + status + ']</option>';
+  });
+  if (current) sel.value = current;
+}
+
+async function testDrive() {
+  document.getElementById('testResult').textContent = 'Testing...';
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'phototest' });
+    if (json.success) {
+      document.getElementById('testResult').textContent = '✓ Connected to folder: ' + json.folderName;
+      document.getElementById('testResult').style.color = '#28a745';
+    } else {
+      document.getElementById('testResult').textContent = '✗ ' + (json.error || 'Failed');
+      document.getElementById('testResult').style.color = '#dc3545';
+    }
+  } catch(err) {
+    document.getElementById('testResult').textContent = '✗ ' + err.message + ' — make sure you deployed the latest Apps Script';
+    document.getElementById('testResult').style.color = '#dc3545';
+  }
+}
+
+function onPOChange() {
+  selectedPO = document.getElementById('poSelect').value;
+  document.getElementById('captureCard').style.display = selectedPO ? 'block' : 'none';
+  document.getElementById('photosCard').style.display = selectedPO ? 'block' : 'none';
+  if (selectedPO) {
+    document.getElementById('selectedPOBadge').textContent = 'PO#' + selectedPO;
+    cancelPreview();
+    loadPhotos();
+  }
+}
+
+function onFileSelected(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Resize image to reduce upload size (max 1200px wide)
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const maxW = 1920;
+      let w = img.width, h = img.height;
+      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+      document.getElementById('previewImg').src = imageData;
+      document.getElementById('previewArea').style.display = 'block';
+      document.getElementById('photoLabel').value = '';
+      document.getElementById('photoLabel').focus();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  event.target.value = ''; // reset so same file can be selected again
+}
+
+function cancelPreview() {
+  imageData = '';
+  document.getElementById('previewArea').style.display = 'none';
+  document.getElementById('progressBar').style.display = 'none';
+}
+
+// ---- BACKGROUND UPLOAD QUEUE ----
+let uploadQueue = [];
+let uploading = false;
+
+function queueUpload(po, label, image) {
+  uploadQueue.push({ po, label, image });
+  showToast('Photo queued — uploading in background', 'success');
+  if (!uploading) processQueue();
+}
+
+async function processQueue() {
+  if (!uploadQueue.length) {
+    uploading = false;
+    document.getElementById('uploadQueue').style.display = 'none';
+    return;
+  }
+  uploading = true;
+  const item = uploadQueue[0];
+  document.getElementById('uploadQueue').style.display = 'block';
+  document.getElementById('queueLabel').textContent = 'Uploading ' + item.label + ' (PO#' + item.po + ')';
+  document.getElementById('queueDetail').textContent = uploadQueue.length + ' in queue';
+  document.getElementById('queueProgress').style.width = '0%';
+
+  try {
+    const chunks = [];
+    const chunkSize = 4000;
+    for (let i = 0; i < item.image.length; i += chunkSize) {
+      chunks.push(item.image.substring(i, i + chunkSize));
+    }
+    const uploadId = 'up_' + Date.now();
+
+    for (let i = 0; i < chunks.length; i++) {
+      const pct = Math.round(((i + 1) / chunks.length) * 85);
+      document.getElementById('queueProgress').style.width = pct + '%';
+      document.getElementById('queueDetail').textContent = 'Chunk ' + (i+1) + '/' + chunks.length;
+      await jsonpLong(scriptUrl, {
+        action: 'photochunk', uploadId: uploadId,
+        chunkIndex: i.toString(), totalChunks: chunks.length.toString(),
+        chunk: chunks[i]
+      });
+    }
+
+    document.getElementById('queueProgress').style.width = '95%';
+    document.getElementById('queueDetail').textContent = 'Saving to Drive...';
+
+    const result = await jsonpLong(scriptUrl, {
+      action: 'photoassemble', uploadId: uploadId,
+      po: item.po, label: item.label, totalChunks: chunks.length.toString()
+    });
+
+    document.getElementById('queueProgress').style.width = '100%';
+    if (result.success) {
+      showToast('✓ ' + (result.fileName || item.label) + ' uploaded', 'success');
+      if (selectedPO === item.po) loadPhotos();
+    } else {
+      showToast('Upload failed: ' + (result.error || 'Unknown'), 'error');
+    }
+  } catch(err) {
+    showToast('Upload error: ' + err.message + ' — will retry', 'error');
+  }
+
+  uploadQueue.shift();
+  setTimeout(processQueue, 500);
+}
+
+async function uploadPhoto() {
+  if (!selectedPO || !imageData) return;
+  const label = document.getElementById('photoLabel').value.trim() || 'photo';
+  queueUpload(selectedPO, label, imageData);
+  cancelPreview();
+  setTimeout(() => { document.getElementById('progressBar').style.display = 'none'; }, 1000);
+}
+
+async function loadPhotos() {
+  if (!scriptUrl || !selectedPO) return;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'listphotos', po: selectedPO });
+    if (json.success) {
+      const photos = json.photos || [];
+      document.getElementById('photoCount').textContent = photos.length ? '(' + photos.length + ')' : '';
+      if (!photos.length) {
+        document.getElementById('photoGrid').innerHTML = '<div class="empty-state">No photos for this PO yet.</div>';
+        return;
+      }
+      const folderLink = json.folderUrl ? '<div style="margin-bottom:10px;"><a href="' + json.folderUrl + '" target="_blank" style="font-size:12px;color:#1a3a5c;">Open folder in Google Drive ↗</a></div>' : '';
+      document.getElementById('photoGrid').innerHTML = folderLink + '<div class="photo-grid">' + photos.map(p =>
+        '<a href="' + p.fullUrl + '" target="_blank" class="photo-card">'
+        + '<img src="' + p.url + '" alt="' + p.name + '" onerror="this.style.background=\'#eee\';this.style.height=\'140px\';">'
+        + '<div class="info"><div class="name">' + p.name + '</div><div class="date">' + p.date + '</div></div></a>'
+      ).join('') + '</div>';
+    }
+  } catch(err) {
+    document.getElementById('photoGrid').innerHTML = '<div class="empty-state">Could not load photos.</div>';
+  }
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+loadOrders();
+</script>

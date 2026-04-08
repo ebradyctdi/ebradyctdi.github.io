@@ -39,7 +39,7 @@
     <a href="overview.html"><span class="icon">🏠</span> Overview</a>
     <a href="wip.html"><span class="icon">🏭</span> WIP</a>
     <a href="infirmary.html"><span class="icon">🏥</span> Infirmary</a>
-    <a href="history.html"><span class="icon">📜</span> History</a>
+    <a href="history.html"><span class="icon">📜</span> Ship History</a>
     <div class="nav-section">Apps</div>
     <a href="receive-order.html" class="active"><span class="icon">📦</span> Receive Order</a>
     <a href="start-build.html"><span class="icon">🔨</span> Start Build</a>
@@ -47,8 +47,10 @@
     <a href="build-complete.html"><span class="icon">✅</span> Build Complete</a>
     <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
     <a href="ship-out.html"><span class="icon">🚚</span> Ship Out</a>
+    <a href="photo-capture.html"><span class="icon">📸</span> Photo Capture</a>
     <div class="nav-section">System</div>
     <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    <a href="configurations.html"><span class="icon">🗂️</span> Configurations</a>
   </div>
 </nav>
 <div class="main-wrap">
@@ -68,9 +70,11 @@
           <input type="text" id="fPO" autocomplete="off" autofocus maxlength="10" placeholder="8000XXXXXX" style="width:100%;padding:12px 14px;border:2px solid #ddd;border-radius:6px;font-size:16px;font-family:Consolas,monospace;">
           <div id="poError" style="font-size:10px;color:#dc3545;position:absolute;bottom:-16px;left:0;"></div>
         </div>
-        <div style="flex:1;min-width:180px;">
+        <div style="flex:2;min-width:300px;">
           <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Configuration</label>
-          <input type="text" id="fConfig" autocomplete="off" style="width:100%;padding:12px 14px;border:2px solid #ddd;border-radius:6px;font-size:16px;font-family:Consolas,monospace;">
+          <select id="fConfig" style="width:100%;padding:12px 14px;border:2px solid #ddd;border-radius:6px;font-size:16px;font-family:Consolas,monospace;background:white;">
+            <option value="">— Select —</option>
+          </select>
         </div>
         <div style="flex:1;min-width:180px;">
           <label style="display:block;font-size:11px;font-weight:600;color:#666;text-transform:uppercase;margin-bottom:4px;">Location</label>
@@ -177,14 +181,28 @@ async function connect() {
   setStatus('pending', 'Connecting...');
   try {
     const json = await jsonpRequest(scriptUrl, {});
-    if (json.success) { setStatus('connected', 'Connected'); loadFromSheet(); retryUnsynced(); }
+    if (json.success) { setStatus('connected', 'Connected'); loadFromSheet(); retryUnsynced(); loadConfigs(); }
     else throw new Error(json.error);
   } catch(err) { setStatus('disconnected', 'Connection failed'); }
 }
 
+async function loadConfigs() {
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'readconfigs' });
+    if (json.success && json.data) {
+      const sel = document.getElementById('fConfig');
+      sel.innerHTML = '<option value="">— Select —</option>';
+      json.data.forEach(c => {
+        const name = (c['Configuration']||'').toString().trim();
+        if (name) sel.innerHTML += '<option value="' + name + '">' + name + '</option>';
+      });
+    }
+  } catch(err) {}
+}
+
 async function addEntry() {
   const poInput = document.getElementById('fPO');
-  const po = poInput.value.trim(), config = document.getElementById('fConfig').value.trim(), location = document.getElementById('fLocation').value;
+  const po = poInput.value.trim(), config = document.getElementById('fConfig').value, location = document.getElementById('fLocation').value;
   const poErr = validatePO(po);
   if (poErr) {
     showToast(poErr, 'error');

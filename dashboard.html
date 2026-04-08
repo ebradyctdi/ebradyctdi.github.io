@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWAT Production Tracker Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; }
+
+  .header {
+    background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%);
+    color: white; padding: 16px 30px; position: sticky; top: 0; z-index: 100;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .header-btn {
+    padding: 7px 16px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);
+    color: white; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; transition: background 0.2s;
+  }
+  .header-btn:hover { background: rgba(255,255,255,0.25); }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; padding: 20px 30px; }
+  .kpi-card {
+    background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    text-align: center; position: relative; overflow: hidden;
+  }
+  .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+  .kpi-card.blue::before { background: #1a3a5c; }
+  .kpi-card.green::before { background: #28a745; }
+  .kpi-card.orange::before { background: #fd7e14; }
+  .kpi-card.teal::before { background: #17a2b8; }
+  .kpi-card.purple::before { background: #6f42c1; }
+  .kpi-value { font-size: 36px; font-weight: 700; color: #1a3a5c; }
+  .kpi-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  .main { padding: 0 30px 30px; }
+
+  .tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
+  .tab {
+    padding: 10px 24px; cursor: pointer; font-size: 14px; font-weight: 500;
+    color: #666; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;
+  }
+  .tab:hover { color: #1a3a5c; }
+  .tab.active { color: #1a3a5c; border-bottom-color: #1a3a5c; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .table-controls {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; flex-wrap: wrap; gap: 10px;
+  }
+  .search-box {
+    padding: 8px 14px; border: 1px solid #ddd; border-radius: 4px;
+    font-size: 13px; width: 280px; outline: none;
+  }
+  .search-box:focus { border-color: #1a3a5c; }
+  .filter-group { display: flex; gap: 8px; align-items: center; }
+  .filter-group select { padding: 7px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+
+  .data-table {
+    width: 100%; border-collapse: collapse; background: white;
+    border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  .data-table th {
+    background: #1a3a5c; color: white; padding: 10px 12px; font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.3px; text-align: left;
+    cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  .data-table th:hover { background: #244d73; }
+  .data-table th .sort-arrow { margin-left: 4px; opacity: 0.5; font-size: 10px; }
+  .data-table th.sorted .sort-arrow { opacity: 1; }
+  .data-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #eee; white-space: nowrap; }
+  .data-table tr:hover td { background: #f8f9fa; }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  .badge-complete { background: #e8f5e9; color: #1b5e20; }
+  .badge-in-process { background: #fff3e0; color: #e65100; }
+
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .chart-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .chart-card h3 { font-size: 14px; color: #1a3a5c; margin-bottom: 16px; }
+
+  .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 200px; padding-top: 10px; }
+  .bar-col { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; }
+  .bar { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.5s; min-height: 2px; position: relative; }
+  .bar-value { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 600; color: #333; }
+  .bar-label { font-size: 9px; color: #888; margin-top: 6px; text-align: center; word-break: break-word; }
+
+  .donut-container { display: flex; align-items: center; gap: 24px; }
+  .donut {
+    width: 140px; height: 140px; border-radius: 50%; position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .donut-center {
+    width: 80px; height: 80px; background: white; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 700; color: #1a3a5c; z-index: 1;
+  }
+  .donut-legend { display: flex; flex-direction: column; gap: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #ddd; }
+  .timeline-item { position: relative; padding-bottom: 16px; }
+  .timeline-item::before { content: ''; position: absolute; left: -20px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #1a3a5c; }
+  .timeline-date { font-size: 11px; color: #888; }
+  .timeline-text { font-size: 13px; margin-top: 2px; }
+
+  .duration-bar-container { display: flex; align-items: center; gap: 6px; }
+  .duration-bar { height: 6px; background: #e9ecef; border-radius: 3px; width: 80px; overflow: hidden; }
+  .duration-fill { height: 100%; border-radius: 3px; }
+
+  .stat-row { display: flex; gap: 20px; margin-bottom: 20px; }
+  .stat-card { flex: 1; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .stat-card h4 { font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 8px; }
+  .stat-card .stat-val { font-size: 24px; font-weight: 700; color: #1a3a5c; }
+  .stat-card .stat-sub { font-size: 11px; color: #999; margin-top: 2px; }
+
+  .notes-flag { color: #fd7e14; cursor: help; }
+
+  @media (max-width: 768px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .charts-row { grid-template-columns: 1fr; }
+    .header { flex-direction: column; gap: 10px; }
+    .stat-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>AWAT Build Tracker</h1>
+    <div class="header-sub">CTDI - Alburtis &bull; Production Dashboard</div>
+  </div>
+  <div class="header-right">
+    <a href="receive-order.html" class="header-btn">Receive Order</a>
+    <a href="https://commtestdesign-my.sharepoint.com/:x:/g/personal/vsosa_ctdi_com/IQCYr6T771fMTYxcHqGKk1k3ASKHbRJZw2UFpXyh4GvPakk?e=zFinQR"
+       target="_blank" class="header-btn">Open SharePoint Tracker</a>
+  </div>
+</div>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="main">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(this,'overview')">Overview</div>
+    <div class="tab" onclick="switchTab(this,'table')">All Orders</div>
+    <div class="tab" onclick="switchTab(this,'metrics')">Metrics</div>
+  </div>
+
+  <div class="tab-content active" id="tab-overview">
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>Completions by Month</h3>
+        <div class="bar-chart" id="monthlyChart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Status Breakdown</h3>
+        <div class="donut-container" id="donutChart"></div>
+      </div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>Build Duration Distribution (Days)</h3>
+        <div class="bar-chart" id="durationChart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Recent Transfers</h3>
+        <div class="timeline" id="recentTransfers" style="max-height:220px;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-table">
+    <div class="table-controls">
+      <input type="text" class="search-box" id="searchBox" placeholder="Search PO#, notes..." oninput="renderTable()">
+      <div class="filter-group">
+        <select id="filterStatus" onchange="renderTable()">
+          <option value="">All Statuses</option>
+          <option value="Complete">Complete</option>
+          <option value="In Process">In Process</option>
+        </select>
+        <select id="filterHasNotes" onchange="renderTable()">
+          <option value="">All</option>
+          <option value="yes">Has Notes</option>
+        </select>
+        <button class="header-btn" style="background:#1a3a5c;border-color:#1a3a5c;" onclick="exportCSV()">Export CSV</button>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="tab-content" id="tab-metrics">
+    <div class="stat-row" id="statCards"></div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>Avg Build Time by Month (Days)</h3>
+        <div class="bar-chart" id="avgBuildChart"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Throughput (Cabinets Completed per Month)</h3>
+        <div class="bar-chart" id="throughputChart"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// ACTUAL DATA FROM PRODUCTION TRACKER XLSX
+// ============================================================
+const orders = [
+  {rec:1,po:"8000123456",status:"Complete",delivered:"2025-01-01",start:"2025-01-01",complete:"2025-08-27",transfer:"2025-08-27",notes:""},
+  {rec:2,po:"8000182814",status:"Complete",delivered:"2025-09-19",start:"2025-09-22",complete:"2025-09-30",transfer:"2025-09-30",notes:""},
+  {rec:3,po:"8000183203",status:"Complete",delivered:"2025-09-23",start:"2025-09-24",complete:"2025-10-01",transfer:"2025-10-20",notes:""},
+  {rec:4,po:"8000183204",status:"Complete",delivered:"2025-09-23",start:"2025-09-24",complete:"2025-10-03",transfer:"2025-10-20",notes:""},
+  {rec:5,po:"8000184211",status:"Complete",delivered:"2025-09-26",start:"2025-10-02",complete:"2025-10-03",transfer:"2025-10-20",notes:""},
+  {rec:6,po:"8000184210",status:"Complete",delivered:"2025-09-26",start:"2025-10-02",complete:"2025-10-06",transfer:"2025-10-20",notes:""},
+  {rec:7,po:"8000189212",status:"Complete",delivered:"2025-10-09",start:"2025-10-09",complete:"2025-10-13",transfer:"2025-10-28",notes:""},
+  {rec:8,po:"8000189213",status:"Complete",delivered:"2025-10-09",start:"2025-10-09",complete:"2025-10-28",transfer:"2025-10-28",notes:""},
+  {rec:9,po:"8000189805",status:"Complete",delivered:"2025-10-15",start:"2025-10-15",complete:"2025-11-10",transfer:"2025-11-10",notes:""},
+  {rec:10,po:"8000189807",status:"Complete",delivered:"2025-10-20",start:"2025-10-21",complete:"2025-11-10",transfer:"2025-11-10",notes:""},
+  {rec:11,po:"8000189808",status:"Complete",delivered:"2025-10-20",start:"2025-10-21",complete:"2025-11-10",transfer:"2025-11-10",notes:""},
+  {rec:12,po:"8000189809",status:"Complete",delivered:"2025-10-23",start:"2025-10-23",complete:"2025-11-26",transfer:"2025-11-26",notes:""},
+  {rec:13,po:"8000199908",status:"Complete",delivered:"2025-11-04",start:"2025-11-04",complete:"2025-11-26",transfer:"2025-11-26",notes:""},
+  {rec:14,po:"8000199909",status:"Complete",delivered:"2025-11-04",start:"2025-11-04",complete:"2025-11-10",transfer:"2025-11-10",notes:""},
+  {rec:15,po:"8000199975",status:"Complete",delivered:"2025-11-04",start:"2025-11-04",complete:"2025-11-26",transfer:"2025-11-26",notes:""},
+  {rec:16,po:"8000199976",status:"Complete",delivered:"2025-11-05",start:"2025-11-06",complete:"2025-11-26",transfer:"2025-11-26",notes:""},
+  {rec:17,po:"8000199977",status:"Complete",delivered:"2025-11-05",start:"2025-11-06",complete:"2025-11-26",transfer:"2025-11-26",notes:""},
+  {rec:18,po:"8000207077",status:"Complete",delivered:"2025-11-24",start:"2025-11-25",complete:"2025-12-15",transfer:"2025-12-18",notes:""},
+  {rec:19,po:"8000207079",status:"Complete",delivered:"2025-11-24",start:"2025-11-25",complete:"2025-12-15",transfer:"2025-12-18",notes:""},
+  {rec:20,po:"8000207080",status:"Complete",delivered:"2025-11-26",start:"2025-11-25",complete:"2025-11-26",transfer:"2025-11-26",notes:""},
+  {rec:21,po:"8000207081",status:"Complete",delivered:"2025-11-24",start:"2025-11-25",complete:"2025-12-26",transfer:"2025-12-29",notes:""},
+  {rec:22,po:"8000207788",status:"Complete",delivered:"2025-12-10",start:"2025-12-10",complete:"2025-12-15",transfer:"2025-12-18",notes:""},
+  {rec:23,po:"8000207789",status:"Complete",delivered:"2025-12-10",start:"2025-12-10",complete:"2025-12-15",transfer:"2025-12-18",notes:""},
+  {rec:24,po:"8000207790",status:"Complete",delivered:"2025-12-10",start:"2025-12-10",complete:"2025-12-15",transfer:"2025-12-18",notes:""},
+  {rec:25,po:"8000207791",status:"Complete",delivered:"2025-12-10",start:"2025-12-10",complete:"2025-12-15",transfer:"2025-12-18",notes:""},
+  {rec:26,po:"8000207880",status:"Complete",delivered:"2025-12-15",start:"2025-12-18",complete:"2026-01-06",transfer:"2026-01-09",notes:""},
+  {rec:27,po:"8000207881",status:"Complete",delivered:"2025-12-15",start:"2025-12-18",complete:"2026-01-07",transfer:"2026-01-09",notes:""},
+  {rec:28,po:"8000207883",status:"Complete",delivered:"2025-12-15",start:"2025-11-25",complete:"2025-12-26",transfer:"2025-12-29",notes:""},
+  {rec:29,po:"8000207884",status:"Complete",delivered:"2025-12-15",start:"2025-12-18",complete:"2026-01-07",transfer:"2026-01-09",notes:""},
+  {rec:30,po:"8000214797",status:"Complete",delivered:"2026-01-02",start:"2026-01-05",complete:"2026-01-06",transfer:"2026-01-09",notes:""},
+  {rec:31,po:"8000214798",status:"Complete",delivered:"2026-01-02",start:"2026-01-05",complete:"2026-01-08",transfer:"2026-01-09",notes:""},
+  {rec:32,po:"8000214799",status:"Complete",delivered:"2026-01-02",start:"2026-01-05",complete:"2026-01-08",transfer:"2026-01-09",notes:""},
+  {rec:33,po:"8000214800",status:"Complete",delivered:"2026-01-02",start:"2026-01-05",complete:"2026-01-09",transfer:"2026-01-09",notes:""},
+  {rec:34,po:"8000214801",status:"Complete",delivered:"2026-01-02",start:"2026-01-05",complete:"2026-01-13",transfer:"2026-01-16",notes:""},
+  {rec:35,po:"8000216866",status:"Complete",delivered:"2026-01-14",start:"2026-01-14",complete:"2026-01-16",transfer:"2026-01-16",notes:""},
+  {rec:36,po:"8000216867",status:"Complete",delivered:"2026-01-14",start:"2026-01-14",complete:"2026-02-02",transfer:"2026-02-04",notes:"Defective HVAC, Charles alerted and remedy action being scheduled (Fixed- 2-2-2026)"},
+  {rec:37,po:"8000216868",status:"Complete",delivered:"2026-01-14",start:"2026-01-19",complete:"2026-01-20",transfer:"2026-01-26",notes:""},
+  {rec:38,po:"8000216869",status:"Complete",delivered:"2026-01-14",start:"2026-01-14",complete:"2026-01-19",transfer:"2026-01-26",notes:""},
+  {rec:39,po:"8000216870",status:"Complete",delivered:"2026-01-14",start:"2026-01-19",complete:"2026-01-20",transfer:"2026-01-26",notes:""},
+  {rec:40,po:"8000216864",status:"Complete",delivered:"2026-01-14",start:"2026-01-14",complete:"2026-01-16",transfer:"2026-01-26",notes:""},
+  {rec:41,po:"8000218117",status:"Complete",delivered:"2026-01-20",start:"2026-01-23",complete:"2026-01-27",transfer:"2026-01-30",notes:""},
+  {rec:42,po:"8000218118",status:"Complete",delivered:"2026-01-20",start:"2026-01-23",complete:"2026-01-28",transfer:"2026-01-30",notes:""},
+  {rec:43,po:"8000218119",status:"Complete",delivered:"2026-01-20",start:"2026-01-20",complete:"2026-01-22",transfer:"2026-01-26",notes:""},
+  {rec:44,po:"8000218121",status:"Complete",delivered:"2026-01-20",start:"2026-01-20",complete:"2026-01-22",transfer:"2026-01-26",notes:""},
+  {rec:45,po:"8000218122",status:"Complete",delivered:"2026-01-20",start:"2026-01-22",complete:"2026-01-28",transfer:"2026-01-30",notes:""},
+  {rec:46,po:"8000218124",status:"Complete",delivered:"2026-01-20",start:"2026-01-22",complete:"2026-01-26",transfer:"2026-01-28",notes:""},
+  {rec:47,po:"8000223193",status:"Complete",delivered:"2026-01-27",start:"2026-01-29",complete:"2026-01-30",transfer:"2026-02-02",notes:""},
+  {rec:48,po:"8000223222",status:"Complete",delivered:"2026-01-27",start:"2026-01-29",complete:"2026-02-04",transfer:"2026-02-05",notes:""},
+  {rec:49,po:"8000223244",status:"Complete",delivered:"2026-01-27",start:"2026-01-29",complete:"2026-02-20",transfer:"2026-02-23",notes:"Missing Alarm Sticker"},
+  {rec:50,po:"8000223262",status:"Complete",delivered:"2026-01-27",start:"2026-01-28",complete:"2026-01-30",transfer:"2026-02-02",notes:""},
+];
+
+const orders2 = [
+  {rec:51,po:"8000223278",status:"Complete",delivered:"2026-01-27",start:"2026-01-30",complete:"2026-02-05",transfer:"2026-02-09",notes:""},
+  {rec:52,po:"8000223299",status:"Complete",delivered:"2026-01-27",start:"2026-01-28",complete:"2026-02-02",transfer:"2026-02-04",notes:""},
+  {rec:53,po:"8000227621",status:"Complete",delivered:"2026-02-03",start:"2026-02-05",complete:"2026-02-10",transfer:"2026-02-11",notes:""},
+  {rec:54,po:"8000227623",status:"Complete",delivered:"2026-02-03",start:"2026-02-06",complete:"2026-02-12",transfer:"2026-02-16",notes:""},
+  {rec:55,po:"8000227624",status:"Complete",delivered:"2026-02-03",start:"2026-02-06",complete:"2026-02-12",transfer:"2026-02-16",notes:""},
+  {rec:56,po:"8000227625",status:"Complete",delivered:"2026-02-03",start:"2026-02-03",complete:"2026-02-10",transfer:"2026-02-11",notes:""},
+  {rec:57,po:"8000227626",status:"Complete",delivered:"2026-02-03",start:"2026-02-04",complete:"2026-02-10",transfer:"2026-02-11",notes:""},
+  {rec:58,po:"8000227627",status:"Complete",delivered:"2026-02-03",start:"2026-02-06",complete:"2026-02-10",transfer:"2026-02-11",notes:""},
+  {rec:59,po:"8000228117",status:"Complete",delivered:"2026-02-09",start:"2026-02-16",complete:"2026-02-18",transfer:"2026-02-19",notes:""},
+  {rec:60,po:"8000228119",status:"Complete",delivered:"2026-02-09",start:"2026-02-11",complete:"2026-02-26",transfer:"2026-02-27",notes:"Damaged Siteboss"},
+  {rec:61,po:"8000228139",status:"Complete",delivered:"2026-02-09",start:"2026-02-13",complete:"2026-02-17",transfer:"2026-02-17",notes:""},
+  {rec:62,po:"8000228140",status:"Complete",delivered:"2026-02-09",start:"2026-02-12",complete:"2026-02-13",transfer:"2026-02-16",notes:""},
+  {rec:63,po:"8000228141",status:"Complete",delivered:"2026-02-09",start:"2026-02-13",complete:"2026-02-17",transfer:"2026-02-17",notes:""},
+  {rec:64,po:"8000228142",status:"Complete",delivered:"2026-02-09",start:"2026-02-12",complete:"2026-02-13",transfer:"2026-02-16",notes:""},
+  {rec:65,po:"8000229902",status:"Complete",delivered:"2026-02-18",start:"2026-02-23",complete:"2026-02-24",transfer:"2026-02-26",notes:""},
+  {rec:66,po:"8000230020",status:"Complete",delivered:"2026-02-18",start:"2026-02-26",complete:"2026-03-02",transfer:"2026-03-03",notes:""},
+  {rec:67,po:"8000230227",status:"Complete",delivered:"2026-02-18",start:"2026-02-27",complete:"2026-03-13",transfer:"2026-03-30",notes:""},
+  {rec:68,po:"8000231758",status:"Complete",delivered:"2026-02-18",start:"2026-02-18",complete:"2026-02-20",transfer:"2026-02-23",notes:""},
+  {rec:69,po:"8000231759",status:"Complete",delivered:"2026-02-18",start:"2026-02-18",complete:"2026-02-24",transfer:"2026-02-26",notes:""},
+  {rec:70,po:"8000231762",status:"Complete",delivered:"2026-02-18",start:"2026-02-23",complete:"2026-02-26",transfer:"2026-02-27",notes:""},
+  {rec:71,po:"8000232645",status:"Complete",delivered:"2026-02-24",start:"2026-02-27",complete:"2026-03-16",transfer:"2026-03-30",notes:""},
+  {rec:72,po:"8000232647",status:"Complete",delivered:"2026-02-24",start:"2026-03-10",complete:"2026-03-16",transfer:"2026-03-30",notes:""},
+  {rec:73,po:"8000232648",status:"Complete",delivered:"2026-02-24",start:"2026-02-26",complete:"2026-03-04",transfer:"2026-03-05",notes:""},
+  {rec:74,po:"8000232866",status:"Complete",delivered:"2026-02-24",start:"2026-02-26",complete:"2026-03-04",transfer:"2026-03-05",notes:""},
+  {rec:75,po:"8000232868",status:"Complete",delivered:"2026-02-24",start:"2026-02-27",complete:"2026-03-04",transfer:"2026-03-05",notes:""},
+  {rec:76,po:"8000232869",status:"Complete",delivered:"2026-02-24",start:"2026-03-02",complete:"2026-03-06",transfer:"2026-03-11",notes:""},
+  {rec:77,po:"8000234305",status:"Complete",delivered:"2026-03-02",start:"2026-03-03",complete:"2026-03-06",transfer:"2026-03-11",notes:""},
+  {rec:78,po:"8000234458",status:"Complete",delivered:"2026-03-02",start:"2026-03-03",complete:"2026-03-11",transfer:"2026-03-30",notes:""},
+  {rec:79,po:"8000234698",status:"In Process",delivered:"2026-03-02",start:"2026-03-04",complete:"",transfer:"",notes:""},
+  {rec:80,po:"8000234700",status:"Complete",delivered:"2026-03-02",start:"2026-03-04",complete:"2026-03-16",transfer:"2026-03-30",notes:""},
+  {rec:81,po:"8000234705",status:"Complete",delivered:"2026-03-02",start:"2026-03-06",complete:"2026-03-11",transfer:"2026-03-30",notes:""},
+  {rec:82,po:"8000234711",status:"Complete",delivered:"2026-03-02",start:"2026-03-10",complete:"2026-03-16",transfer:"2026-03-30",notes:""},
+  {rec:83,po:"8000244361",status:"In Process",delivered:"",start:"",complete:"",transfer:"",notes:"Forward Engineering Cabinet, need to confirm receipt date"},
+  {rec:84,po:"8000237138",status:"In Process",delivered:"",start:"",complete:"",transfer:"",notes:"Forward Engineering Cabinet, need to confirm receipt date"},
+  {rec:85,po:"8000206888",status:"In Process",delivered:"",start:"",complete:"",transfer:"",notes:"Forward Engineering Cabinet, need to confirm receipt date"},
+];
+// Merge
+orders.push(...orders2);
+
+// ============================================================
+// HELPERS
+// ============================================================
+function daysBetween(a, b) {
+  if (!a || !b) return null;
+  const d1 = new Date(a), d2 = new Date(b);
+  return Math.round((d2 - d1) / 86400000);
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function monthKey(d) {
+  if (!d) return null;
+  return d.substring(0, 7); // "2026-01"
+}
+
+function monthLabel(mk) {
+  const [y, m] = mk.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[parseInt(m) - 1] + ' ' + y.substring(2);
+}
+
+// ============================================================
+// KPIs
+// ============================================================
+function renderKPIs() {
+  const total = orders.length;
+  const complete = orders.filter(o => o.status === 'Complete').length;
+  const inProcess = orders.filter(o => o.status === 'In Process').length;
+
+  // Avg build time (start to complete) for completed orders
+  const buildTimes = orders.filter(o => o.start && o.complete).map(o => daysBetween(o.start, o.complete)).filter(d => d !== null && d >= 0);
+  const avgBuild = buildTimes.length ? (buildTimes.reduce((a, b) => a + b, 0) / buildTimes.length).toFixed(1) : '—';
+
+  // Avg total cycle (delivered to transfer)
+  const cycleTimes = orders.filter(o => o.delivered && o.transfer).map(o => daysBetween(o.delivered, o.transfer)).filter(d => d !== null && d >= 0);
+  const avgCycle = cycleTimes.length ? (cycleTimes.reduce((a, b) => a + b, 0) / cycleTimes.length).toFixed(1) : '—';
+
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi-card blue"><div class="kpi-value">${total}</div><div class="kpi-label">Total POs</div></div>
+    <div class="kpi-card green"><div class="kpi-value">${complete}</div><div class="kpi-label">Complete</div></div>
+    <div class="kpi-card orange"><div class="kpi-value">${inProcess}</div><div class="kpi-label">In Process</div></div>
+    <div class="kpi-card teal"><div class="kpi-value">${avgBuild}</div><div class="kpi-label">Avg Build Days</div></div>
+    <div class="kpi-card purple"><div class="kpi-value">${avgCycle}</div><div class="kpi-label">Avg Cycle Days</div></div>
+  `;
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+function renderCharts() {
+  renderMonthlyChart();
+  renderDonutChart();
+  renderDurationChart();
+  renderRecentTransfers();
+}
+
+function renderMonthlyChart() {
+  const counts = {};
+  orders.forEach(o => {
+    const mk = monthKey(o.complete);
+    if (mk) counts[mk] = (counts[mk] || 0) + 1;
+  });
+  const keys = Object.keys(counts).sort();
+  const max = Math.max(...Object.values(counts), 1);
+
+  document.getElementById('monthlyChart').innerHTML = keys.map(k => {
+    const pct = (counts[k] / max) * 100;
+    return `<div class="bar-col">
+      <div class="bar" style="height:${Math.max(pct, 3)}%;background:#1a3a5c;">
+        <div class="bar-value">${counts[k]}</div>
+      </div>
+      <div class="bar-label">${monthLabel(k)}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderDonutChart() {
+  const total = orders.length || 1;
+  const complete = orders.filter(o => o.status === 'Complete').length;
+  const inProcess = orders.filter(o => o.status === 'In Process').length;
+  const pct = Math.round((complete / total) * 100);
+  const seg1 = (complete / total) * 360;
+  const gradient = `conic-gradient(#28a745 0deg ${seg1}deg, #fd7e14 ${seg1}deg 360deg)`;
+
+  document.getElementById('donutChart').innerHTML = `
+    <div class="donut" style="background:${gradient};">
+      <div class="donut-center">${pct}%</div>
+    </div>
+    <div class="donut-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#28a745;"></div>Complete (${complete})</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fd7e14;"></div>In Process (${inProcess})</div>
+      <div class="legend-item" style="margin-top:12px;font-size:11px;color:#888;">Total: ${orders.length} POs</div>
+    </div>`;
+}
+
+function renderDurationChart() {
+  // Histogram of build durations (start → complete)
+  const buckets = {'1-3':0,'4-7':0,'8-14':0,'15-21':0,'22-30':0,'30+':0};
+  orders.forEach(o => {
+    const d = daysBetween(o.start, o.complete);
+    if (d === null || d < 0) return;
+    if (d <= 3) buckets['1-3']++;
+    else if (d <= 7) buckets['4-7']++;
+    else if (d <= 14) buckets['8-14']++;
+    else if (d <= 21) buckets['15-21']++;
+    else if (d <= 30) buckets['22-30']++;
+    else buckets['30+']++;
+  });
+  const max = Math.max(...Object.values(buckets), 1);
+  const colors = ['#28a745','#17a2b8','#1a3a5c','#6f42c1','#fd7e14','#dc3545'];
+
+  document.getElementById('durationChart').innerHTML = Object.entries(buckets).map(([k, v], i) => {
+    const pct = (v / max) * 100;
+    return `<div class="bar-col">
+      <div class="bar" style="height:${Math.max(pct, 3)}%;background:${colors[i]};">
+        <div class="bar-value">${v}</div>
+      </div>
+      <div class="bar-label">${k} days</div>
+    </div>`;
+  }).join('');
+}
+
+function renderRecentTransfers() {
+  const transferred = orders.filter(o => o.transfer).sort((a, b) => b.transfer.localeCompare(a.transfer)).slice(0, 10);
+  document.getElementById('recentTransfers').innerHTML = transferred.map(o =>
+    `<div class="timeline-item">
+      <div class="timeline-date">${formatDate(o.transfer)}</div>
+      <div class="timeline-text">PO#${o.po} transferred out${o.notes ? ' <span class="notes-flag" title="' + o.notes.replace(/"/g, '&quot;') + '">⚠ ' + o.notes.substring(0, 40) + (o.notes.length > 40 ? '...' : '') + '</span>' : ''}</div>
+    </div>`
+  ).join('');
+}
+
+// ============================================================
+// TABLE
+// ============================================================
+const TABLE_COLS = [
+  {key:'rec',label:'#'},
+  {key:'po',label:'PO Number'},
+  {key:'status',label:'CTDI Status'},
+  {key:'delivered',label:'Delivered'},
+  {key:'start',label:'Cabinet Start'},
+  {key:'complete',label:'Cabinet Complete'},
+  {key:'transfer',label:'Transfer Out'},
+  {key:'buildDays',label:'Build Days'},
+  {key:'notes',label:'Notes'}
+];
+
+let sortCol = 'rec';
+let sortDir = 1;
+
+function renderTableHead() {
+  document.getElementById('tableHead').innerHTML = '<tr>' + TABLE_COLS.map(c =>
+    `<th class="${sortCol === c.key ? 'sorted' : ''}" onclick="sortTable('${c.key}')">
+      ${c.label} <span class="sort-arrow">${sortCol === c.key ? (sortDir === 1 ? '▲' : '▼') : '⇅'}</span>
+    </th>`
+  ).join('') + '</tr>';
+}
+
+function renderTable() {
+  renderTableHead();
+  const search = document.getElementById('searchBox').value.toLowerCase();
+  const statusFilter = document.getElementById('filterStatus').value;
+  const notesFilter = document.getElementById('filterHasNotes').value;
+
+  let filtered = orders.filter(o => {
+    if (statusFilter && o.status !== statusFilter) return false;
+    if (notesFilter === 'yes' && !o.notes) return false;
+    if (search) {
+      const hay = `${o.po} ${o.notes}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    let va, vb;
+    if (sortCol === 'buildDays') {
+      va = daysBetween(a.start, a.complete); vb = daysBetween(b.start, b.complete);
+      va = va === null ? 9999 : va; vb = vb === null ? 9999 : vb;
+    } else {
+      va = a[sortCol] || ''; vb = b[sortCol] || '';
+    }
+    if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+    if (va < vb) return -1 * sortDir;
+    if (va > vb) return 1 * sortDir;
+    return 0;
+  });
+
+  document.getElementById('tableBody').innerHTML = filtered.map(o => {
+    const bd = daysBetween(o.start, o.complete);
+    const badgeClass = o.status === 'Complete' ? 'badge-complete' : 'badge-in-process';
+    const bdColor = bd === null ? '' : bd <= 7 ? 'color:#28a745;' : bd <= 14 ? 'color:#1a3a5c;' : 'color:#fd7e14;';
+    return `<tr>
+      <td>${o.rec}</td>
+      <td style="font-weight:600;">${o.po}</td>
+      <td><span class="badge ${badgeClass}">${o.status}</span></td>
+      <td>${formatDate(o.delivered)}</td>
+      <td>${formatDate(o.start)}</td>
+      <td>${formatDate(o.complete)}</td>
+      <td>${formatDate(o.transfer)}</td>
+      <td style="font-weight:600;${bdColor}">${bd !== null ? bd + 'd' : '—'}</td>
+      <td style="max-width:250px;white-space:normal;font-size:12px;color:#666;">${o.notes || ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+function sortTable(col) {
+  if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = 1; }
+  renderTable();
+}
+
+// ============================================================
+// METRICS TAB
+// ============================================================
+function renderMetrics() {
+  const completed = orders.filter(o => o.start && o.complete);
+  const buildTimes = completed.map(o => daysBetween(o.start, o.complete)).filter(d => d !== null && d >= 0);
+  const cycleTimes = orders.filter(o => o.delivered && o.transfer).map(o => daysBetween(o.delivered, o.transfer)).filter(d => d !== null && d >= 0);
+
+  const fastest = buildTimes.length ? Math.min(...buildTimes) : '—';
+  const slowest = buildTimes.length ? Math.max(...buildTimes) : '—';
+  const median = buildTimes.length ? buildTimes.sort((a,b) => a-b)[Math.floor(buildTimes.length/2)] : '—';
+  const withNotes = orders.filter(o => o.notes).length;
+
+  document.getElementById('statCards').innerHTML = `
+    <div class="stat-card"><h4>Fastest Build</h4><div class="stat-val">${fastest}<span style="font-size:14px;color:#888;"> days</span></div></div>
+    <div class="stat-card"><h4>Slowest Build</h4><div class="stat-val">${slowest}<span style="font-size:14px;color:#888;"> days</span></div></div>
+    <div class="stat-card"><h4>Median Build</h4><div class="stat-val">${median}<span style="font-size:14px;color:#888;"> days</span></div></div>
+    <div class="stat-card"><h4>Orders with Notes</h4><div class="stat-val">${withNotes}</div><div class="stat-sub">Issues / flags tracked</div></div>
+  `;
+
+  // Avg build time by month
+  const monthBuild = {};
+  completed.forEach(o => {
+    const mk = monthKey(o.complete);
+    const d = daysBetween(o.start, o.complete);
+    if (mk && d !== null && d >= 0) {
+      if (!monthBuild[mk]) monthBuild[mk] = [];
+      monthBuild[mk].push(d);
+    }
+  });
+  const mbKeys = Object.keys(monthBuild).sort();
+  const mbMax = Math.max(...mbKeys.map(k => monthBuild[k].reduce((a,b)=>a+b,0)/monthBuild[k].length), 1);
+
+  document.getElementById('avgBuildChart').innerHTML = mbKeys.map(k => {
+    const avg = (monthBuild[k].reduce((a,b)=>a+b,0) / monthBuild[k].length).toFixed(1);
+    const pct = (avg / mbMax) * 100;
+    const color = avg <= 7 ? '#28a745' : avg <= 14 ? '#1a3a5c' : '#fd7e14';
+    return `<div class="bar-col">
+      <div class="bar" style="height:${Math.max(pct, 3)}%;background:${color};">
+        <div class="bar-value">${avg}</div>
+      </div>
+      <div class="bar-label">${monthLabel(k)}</div>
+    </div>`;
+  }).join('');
+
+  // Throughput by month (completed count)
+  const tpCounts = {};
+  orders.forEach(o => { const mk = monthKey(o.complete); if (mk) tpCounts[mk] = (tpCounts[mk]||0)+1; });
+  const tpKeys = Object.keys(tpCounts).sort();
+  const tpMax = Math.max(...Object.values(tpCounts), 1);
+
+  document.getElementById('throughputChart').innerHTML = tpKeys.map(k => {
+    const pct = (tpCounts[k] / tpMax) * 100;
+    return `<div class="bar-col">
+      <div class="bar" style="height:${Math.max(pct, 3)}%;background:#1a3a5c;">
+        <div class="bar-value">${tpCounts[k]}</div>
+      </div>
+      <div class="bar-label">${monthLabel(k)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// CSV EXPORT
+// ============================================================
+function exportCSV() {
+  const headers = ['Record','PO Number','CTDI Status','Delivered Date','Cabinet Start Date','Cabinet Complete Date','Transfer Out Date','Build Days','Notes'];
+  const rows = orders.map(o => {
+    const bd = daysBetween(o.start, o.complete);
+    return [o.rec, o.po, o.status, o.delivered, o.start, o.complete, o.transfer, bd !== null ? bd : '', '"' + (o.notes||'').replace(/"/g,'""') + '"'];
+  });
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'AWAT_Build_Tracker.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// TABS & INIT
+// ============================================================
+function switchTab(el, name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'table') renderTable();
+  if (name === 'metrics') renderMetrics();
+}
+
+renderKPIs();
+renderCharts();
+renderTable();
+renderMetrics();
+</script>
+</body>
+</html>
