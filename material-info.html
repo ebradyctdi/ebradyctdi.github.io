@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWAT - Material Info Capture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand h2 { font-size: 16px; font-weight: 700; }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #6f42c1; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 16px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 900px; margin: 0 auto; padding: 24px; width: 100%; }
+  .card { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+  .po-select-row { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+  .po-select-row select { padding: 10px 14px; border: 2px solid #ddd; border-radius: 6px; font-size: 15px; font-family: Consolas, monospace; min-width: 220px; }
+  .po-select-row select:focus { border-color: #1a3a5c; outline: none; }
+  .po-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #e8f0fe; color: #1a3a5c; }
+  .scan-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
+  .scan-field { flex: 1; min-width: 200px; }
+  .scan-field label { display: block; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 4px; }
+  .scan-field input { width: 100%; padding: 12px 14px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; font-family: Consolas, monospace; }
+  .scan-field input:focus { border-color: #1a3a5c; outline: none; background: #f8fbff; }
+  .add-btn { padding: 12px 28px; background: #6f42c1; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; min-width: 120px; }
+  .add-btn:hover { background: #5a32a3; }
+  .add-btn:disabled { background: #ccc; cursor: default; }
+  .hint { font-size: 11px; color: #999; }
+  .mat-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .mat-table th { background: #f0f2f5; padding: 8px 12px; font-size: 11px; text-transform: uppercase; color: #666; text-align: left; }
+  .mat-table td { padding: 10px 12px; font-size: 14px; border-bottom: 1px solid #eee; font-family: Consolas, monospace; }
+  .mat-table tr:hover td { background: #f8f9fa; }
+  .empty-state { text-align: center; padding: 40px 20px; color: #aaa; font-size: 14px; }
+  .refresh-btn { padding: 8px 16px; background: white; color: #1a3a5c; border: 1px solid #1a3a5c; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .refresh-btn:hover { background: #f0f2f5; }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">AWAT - Alburtis, PA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Views</div>
+    <a href="overview.html"><span class="icon">🏠</span> Overview</a>
+    <a href="wip.html"><span class="icon">🏭</span> WIP</a>
+    <a href="infirmary.html"><span class="icon">🏥</span> Infirmary</a>
+    <a href="history.html"><span class="icon">📜</span> History</a>
+    <div class="nav-section">Apps</div>
+    <a href="receive-order.html"><span class="icon">📦</span> Receive Order</a>
+    <a href="start-build.html"><span class="icon">🔨</span> Start Build</a>
+    <a href="material-info.html" class="active"><span class="icon">📋</span> Material Info</a>
+    <a href="build-complete.html"><span class="icon">✅</span> Build Complete</a>
+    <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
+    <a href="ship-out.html"><span class="icon">🚚</span> Ship Out</a>
+    <div class="nav-section">System</div>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+  </div>
+</nav>
+<div class="main-wrap">
+  <div class="header">
+    <div><h1>Material Info Capture</h1><div class="header-sub">Record component serial numbers for POs in assembly</div></div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <div class="card">
+      <h2>Select PO</h2>
+      <div class="po-select-row">
+        <select id="poSelect" onchange="onPOChange()">
+          <option value="">— Select a PO —</option>
+        </select>
+        <button class="refresh-btn" onclick="loadOrders()">Refresh</button>
+      </div>
+    </div>
+    <div class="card" id="captureCard" style="display:none;">
+      <h2>Capture Material Info <span class="po-badge" id="selectedPOBadge"></span></h2>
+      <div class="scan-row">
+        <div class="scan-field">
+          <label>Component</label>
+          <input type="text" id="fComponent" autocomplete="off">
+        </div>
+        <div class="scan-field">
+          <label>Serial Number</label>
+          <input type="text" id="fSerial" autocomplete="off">
+        </div>
+        <button class="add-btn" id="addBtn" onclick="addMaterial()">Add</button>
+      </div>
+      <div class="hint">Scan or type Component, press Enter, scan Serial Number, press Enter to submit. Repeat for each component.</div>
+      <div id="matList"></div>
+    </div>
+  </div>
+</div>
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+</body>
+</html>
+
+<script>
+const URL_KEY = 'awat_script_url';
+let scriptUrl = '', assemblyOrders = [], selectedPO = '', materials = [], _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxqE9olA6Kn21Vy-pz3HSonRh3zf5dKuKfLGh-vQTQJ8gtL0yvYxAF78_1KkBA7EC_E/exec'; } catch(e) {}
+
+const fComponent = document.getElementById('fComponent');
+const fSerial = document.getElementById('fSerial');
+
+fComponent.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); fSerial.focus(); } });
+fSerial.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addMaterial(); } });
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const s = str.toString().trim();
+  if (!s) return '—';
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s;
+  return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Request timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+async function loadOrders() {
+  if (!scriptUrl) {
+    setStatus('disconnected', 'No URL configured');
+    return;
+  }
+  setStatus('pending', 'Loading...');
+  try {
+    const json = await jsonpRequest(scriptUrl, {});
+    if (json.success) {
+      setStatus('connected', 'Connected');
+      assemblyOrders = (json.data || []).filter(r => (r['Status']||'').toString().trim() === 'In Assembly');
+      renderPOSelect();
+    } else { throw new Error(json.error); }
+  } catch(err) { setStatus('disconnected', 'Connection failed'); }
+}
+
+function renderPOSelect() {
+  const sel = document.getElementById('poSelect');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Select a PO (' + assemblyOrders.length + ' in assembly) —</option>';
+  assemblyOrders.forEach(o => {
+    const po = (o['PO Number']||'').toString();
+    const config = (o['Configuration']||'').toString();
+    const loc = (o['Location']||'').toString();
+    const label = po + (config ? ' — ' + config : '') + (loc ? ' @ ' + loc : '');
+    sel.innerHTML += '<option value="' + po + '">' + label + '</option>';
+  });
+  if (current && assemblyOrders.some(o => o['PO Number'].toString() === current)) {
+    sel.value = current;
+  }
+}
+
+function onPOChange() {
+  selectedPO = document.getElementById('poSelect').value;
+  const card = document.getElementById('captureCard');
+  if (selectedPO) {
+    card.style.display = 'block';
+    document.getElementById('selectedPOBadge').textContent = 'PO#' + selectedPO;
+    fComponent.value = ''; fSerial.value = '';
+    fComponent.focus();
+    loadMaterials();
+  } else {
+    card.style.display = 'none';
+  }
+}
+
+async function addMaterial() {
+  const component = fComponent.value.trim();
+  const serial = fSerial.value.trim();
+  if (!component) { showToast('Component is required', 'error'); fComponent.focus(); return; }
+  if (!selectedPO) { showToast('Select a PO first', 'error'); return; }
+
+  const btn = document.getElementById('addBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'materialinfo', po: selectedPO, component: component, serial: serial });
+    if (json.success) {
+      showToast(component + (serial ? ' / ' + serial : '') + ' added', 'success');
+      fComponent.value = ''; fSerial.value = '';
+      fComponent.focus();
+      loadMaterials();
+    } else {
+      showToast(json.error || 'Failed to save', 'error');
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = 'Add';
+}
+
+async function loadMaterials() {
+  if (!scriptUrl || !selectedPO) return;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'materialread', po: selectedPO });
+    if (json.success) {
+      materials = json.data || [];
+      renderMaterials();
+    }
+  } catch(err) {}
+}
+
+function renderMaterials() {
+  const container = document.getElementById('matList');
+  if (!materials.length) {
+    container.innerHTML = '<div class="empty-state">No materials recorded for this PO yet.</div>';
+    return;
+  }
+  let html = '<table class="mat-table"><thead><tr><th>#</th><th>Component</th><th>Serial Number</th><th>Timestamp</th></tr></thead><tbody>';
+  materials.forEach((m, i) => {
+    html += '<tr><td style="color:#888;">' + (i+1) + '</td>'
+      + '<td style="font-weight:600;">' + (m['Component']||'') + '</td>'
+      + '<td>' + (m['Serial Number']||'—') + '</td>'
+      + '<td style="font-size:12px;color:#888;">' + fmtDate(m['Timestamp']) + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+loadOrders();
+</script>

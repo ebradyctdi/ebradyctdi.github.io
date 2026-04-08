@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWAT - Start Build</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 200;
+  }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand h2 { font-size: 16px; font-weight: 700; }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav a {
+    display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+    color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px;
+    transition: all 0.15s; border-left: 3px solid transparent;
+  }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #fd7e14; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+  .header {
+    background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%);
+    color: white; padding: 16px 30px;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 24px; width: 100%; }
+
+  .card { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
+
+  .po-table { width: 100%; border-collapse: collapse; }
+  .po-table th {
+    background: #f0f2f5; padding: 10px 12px; font-size: 11px; text-transform: uppercase;
+    color: #666; text-align: left;
+  }
+  .po-table td { padding: 12px; font-size: 14px; border-bottom: 1px solid #eee; }
+  .po-table tr:hover td { background: #f8f9fa; }
+  .po-table .po-num { font-weight: 600; font-family: Consolas, monospace; }
+  .po-table .meta { font-size: 12px; color: #888; font-family: Consolas, monospace; }
+
+  .start-btn {
+    padding: 8px 20px; background: #fd7e14; color: white; border: none;
+    border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600;
+    transition: background 0.2s;
+  }
+  .start-btn:hover { background: #e8690b; }
+  .start-btn:disabled { background: #ccc; cursor: default; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: #aaa; }
+  .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  .refresh-btn {
+    padding: 8px 16px; background: white; color: #1a3a5c; border: 1px solid #1a3a5c;
+    border-radius: 4px; cursor: pointer; font-size: 12px;
+  }
+  .refresh-btn:hover { background: #f0f2f5; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: white; border-radius: 10px; padding: 28px; max-width: 420px; width: 90%;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.25); text-align: center;
+  }
+  .modal h3 { font-size: 18px; color: #1a3a5c; margin-bottom: 8px; }
+  .modal p { font-size: 14px; color: #666; margin-bottom: 24px; }
+  .modal .po-highlight { font-size: 22px; font-weight: 700; color: #1a3a5c; font-family: Consolas, monospace; margin: 12px 0; }
+  .modal-btns { display: flex; gap: 12px; justify-content: center; }
+  .modal-btns button {
+    padding: 10px 28px; border-radius: 6px; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: none; transition: background 0.2s;
+  }
+  .btn-confirm { background: #fd7e14; color: white; }
+  .btn-confirm:hover { background: #e8690b; }
+  .btn-confirm:disabled { background: #ccc; }
+  .btn-cancel { background: #e9ecef; color: #333; }
+  .btn-cancel:hover { background: #dee2e6; }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">AWAT - Alburtis, PA</div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Views</div>
+    <a href="overview.html"><span class="icon">🏠</span> Overview</a>
+    <a href="wip.html"><span class="icon">🏭</span> WIP</a>
+    <a href="infirmary.html"><span class="icon">🏥</span> Infirmary</a>
+    <a href="history.html"><span class="icon">📜</span> History</a>
+    <div class="nav-section">Apps</div>
+    <a href="receive-order.html"><span class="icon">📦</span> Receive Order</a>
+    <a href="start-build.html" class="active"><span class="icon">🔨</span> Start Build</a>
+    <a href="material-info.html"><span class="icon">📋</span> Material Info</a>
+    <a href="build-complete.html"><span class="icon">✅</span> Build Complete</a>
+    <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
+    <a href="ship-out.html"><span class="icon">🚚</span> Ship Out</a>
+    <div class="nav-section">System</div>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+  </div>
+</nav>
+
+<div class="main-wrap">
+  <div class="header">
+    <div>
+      <h1>Start Build</h1>
+      <div class="header-sub">Select a PO to begin cabinet build</div>
+    </div>
+    <div class="header-right">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2 style="margin-bottom:0;border:none;padding:0;">Awaiting Start <span id="poCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
+        <button class="refresh-btn" onclick="loadOrders()">Refresh</button>
+      </div>
+      <div id="poList">
+        <div class="empty-state">
+          <div class="emoji">⏳</div>
+          <p>Connecting to AWAT Data...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <h3>Start Build?</h3>
+    <div class="po-highlight" id="modalPO"></div>
+    <p>This will change the status to "In Process" and record the Cabinet Start Date as today.</p>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" id="confirmBtn" onclick="confirmStart()">Start Build</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+</body>
+</html>
+
+<script>
+const URL_KEY = 'awat_script_url';
+let scriptUrl = '';
+let awaitingOrders = [];
+let selectedPO = null;
+let _jsonpCounter = 0;
+
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbxqE9olA6Kn21Vy-pz3HSonRh3zf5dKuKfLGh-vQTQJ8gtL0yvYxAF78_1KkBA7EC_E/exec'; } catch(e) {}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const s = str.toString().trim();
+  if (!s) return '—';
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s;
+  return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Request timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl;
+    s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(state, label) {
+  document.getElementById('statusDot').className = 'status-dot ' + state;
+  document.getElementById('statusLabel').textContent = label;
+}
+
+async function loadOrders() {
+  if (!scriptUrl) {
+    setStatus('disconnected', 'No URL configured');
+    document.getElementById('poList').innerHTML = '<div class="empty-state"><div class="emoji">⚠️</div><p>No Apps Script URL found. Go to <a href="receive-order.html">Receive Order</a> and connect first.</p></div>';
+    return;
+  }
+
+  setStatus('pending', 'Loading...');
+  try {
+    const json = await jsonpRequest(scriptUrl, {});
+    if (json.success) {
+      setStatus('connected', 'Connected');
+      awaitingOrders = (json.data || []).filter(r => (r['Status']||'').toString().trim() === 'Received, Awaiting Start');
+      renderOrders();
+    } else {
+      throw new Error(json.error || 'Unknown error');
+    }
+  } catch(err) {
+    setStatus('disconnected', 'Connection failed');
+    document.getElementById('poList').innerHTML = '<div class="empty-state"><div class="emoji">❌</div><p>Could not connect: ' + err.message + '</p></div>';
+  }
+}
+
+function renderOrders() {
+  const container = document.getElementById('poList');
+  document.getElementById('poCount').textContent = awaitingOrders.length ? '(' + awaitingOrders.length + ')' : '';
+
+  if (!awaitingOrders.length) {
+    container.innerHTML = '<div class="empty-state"><div class="emoji">✅</div><p>No POs awaiting start. All caught up.</p></div>';
+    return;
+  }
+
+  let html = '<table class="po-table"><thead><tr><th>PO Number</th><th>Location</th><th>Configuration</th><th>Receive Date</th><th></th></tr></thead><tbody>';
+  awaitingOrders.forEach(o => {
+    const po = (o['PO Number']||'').toString();
+    const loc = (o['Location']||'').toString();
+    const config = (o['Configuration']||'').toString();
+    const rcvDate = (o['Receive Date']||'').toString();
+    html += '<tr>'
+      + '<td class="po-num">' + po + '</td>'
+      + '<td class="meta">' + (loc || '—') + '</td>'
+      + '<td class="meta">' + (config || '—') + '</td>'
+      + '<td class="meta">' + fmtDate(rcvDate) + '</td>'
+      + '<td style="text-align:right;"><button class="start-btn" onclick="openModal(\'' + po.replace(/'/g,"\\'") + '\')">Start</button></td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function openModal(po) {
+  selectedPO = po;
+  document.getElementById('modalPO').textContent = 'PO#' + po;
+  document.getElementById('confirmModal').classList.add('show');
+  document.getElementById('confirmBtn').disabled = false;
+  document.getElementById('confirmBtn').textContent = 'Start Build';
+}
+
+function closeModal() {
+  document.getElementById('confirmModal').classList.remove('show');
+  selectedPO = null;
+}
+
+async function confirmStart() {
+  if (!selectedPO) return;
+  const btn = document.getElementById('confirmBtn');
+  btn.disabled = true; btn.textContent = 'Starting...';
+
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'startbuild', po: selectedPO });
+    if (json.success) {
+      showToast('PO#' + selectedPO + ' build started', 'success');
+      closeModal();
+      loadOrders(); // refresh list
+    } else {
+      showToast(json.error || 'Failed to start build', 'error');
+      btn.disabled = false; btn.textContent = 'Start Build';
+    }
+  } catch(err) {
+    showToast('Error: ' + err.message, 'error');
+    btn.disabled = false; btn.textContent = 'Start Build';
+  }
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.style.background = type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';
+  t.style.transform = 'translateX(0)';
+  setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
+}
+
+// Init
+loadOrders();
+</script>
