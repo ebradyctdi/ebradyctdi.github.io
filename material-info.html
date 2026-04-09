@@ -93,6 +93,7 @@
     <div class="card">
       <h2>Select PO</h2>
       <div class="po-select-row">
+        <input type="text" id="poScan" placeholder="Scan PO#..." autocomplete="off" style="padding:10px 14px;border:2px solid #ddd;border-radius:6px;font-size:15px;font-family:Consolas,monospace;min-width:200px;">
         <select id="poSelect" onchange="onPOChange()"><option value="">— Select a PO —</option></select>
         <button class="refresh-btn" onclick="loadOrders()">Refresh</button>
       </div>
@@ -224,6 +225,23 @@ function renderPOSelect() {
   });
   if (current && assemblyOrders.some(o => o['PO Number'].toString() === current)) sel.value = current;
 }
+
+document.getElementById('poScan').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const val = this.value.trim();
+    if (!val) return;
+    const sel = document.getElementById('poSelect');
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === val || sel.options[i].value.includes(val)) {
+        sel.value = sel.options[i].value;
+        onPOChange();
+        this.value = '';
+        break;
+      }
+    }
+  }
+});
 
 function onPOChange() {
   selectedPO = document.getElementById('poSelect').value;

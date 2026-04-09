@@ -147,6 +147,7 @@
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <h2 style="margin-bottom:0;border:none;padding:0;">Awaiting QC <span id="poCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
+        <input type="text" id="poScan" placeholder="Scan PO# to filter..." autocomplete="off" oninput="filterPOs()" style="padding:8px 14px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:Consolas,monospace;width:220px;">
         <button class="refresh-btn" onclick="loadOrders()">Refresh</button>
       </div>
       <div id="poList">
@@ -245,15 +246,21 @@ async function loadOrders() {
   }
 }
 
+function filterPOs() { renderOrders(); }
+document.getElementById('poScan').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); const btns = document.querySelectorAll('.start-btn,.complete-btn,.pass-btn,.fail-btn,.ship-btn'); if (btns.length === 1) btns[0].click(); }
+});
+
 function renderOrders() {
   const container = document.getElementById('poList');
-  document.getElementById('poCount').textContent = qcOrders.length ? '('+qcOrders.length+')' : '';
-  if (!qcOrders.length) {
+  let filtered = qcOrders; const scan = (document.getElementById('poScan')||{}).value||''; if (scan.trim()) filtered = filtered.filter(o => (o['PO Number']||'').toString().includes(scan.trim()));
+  document.getElementById('poCount').textContent = filtered.length ? '('+filtered.length+')' : '';
+  if (!filtered.length) {
     container.innerHTML = '<div class="empty-state"><div class="emoji">✅</div><p>No POs awaiting QC. All caught up.</p></div>';
     return;
   }
   let html = '<table class="po-table"><thead><tr><th>PO Number</th><th>Location</th><th>Configuration</th><th>Assembly Complete</th><th></th></tr></thead><tbody>';
-  qcOrders.forEach(o => {
+  filtered.forEach(o => {
     const po = (o['PO Number']||'').toString();
     const loc = (o['Location']||'').toString();
     const config = (o['Configuration']||'').toString();
