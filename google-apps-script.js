@@ -9,7 +9,7 @@
 //    - "Material Info" with headers: PO Number | Component | Serial Number | Timestamp
 //    - "QC Notes" with headers: PO Number | Timestamp | Result | Note
 //    - "Infirmary Notes" with headers: PO Number | Timestamp | Note
-//    - "Cabinet Configs" with headers: Configuration | Major Material 1 | Major Material 2 | ... | Major Material 10
+//    - "Cabinet Configs" with headers: Configuration | Major Material 1 | Major Material 2 | ... | Major Material 15
 // 2. Go to Extensions → Apps Script
 // 3. Delete any existing code and paste this entire file
 // 4. Deploy → New Deployment → Web App → Execute as: Me → Who has access: Anyone
@@ -412,7 +412,7 @@ function doGet(e) {
       }
 
       var rowData = [name];
-      for (var i = 1; i <= 10; i++) {
+      for (var i = 1; i <= 15; i++) {
         rowData.push((e.parameter['mat' + i] || '').toString().trim());
       }
       cfgSheet.appendRow(rowData);
@@ -438,7 +438,7 @@ function doGet(e) {
 
       var sheetRow = rowIdx + 2;
       cfgSheet.getRange(sheetRow, 1).setValue(name);
-      for (var i = 1; i <= 10; i++) {
+      for (var i = 1; i <= 15; i++) {
         cfgSheet.getRange(sheetRow, i + 1).setValue((e.parameter['mat' + i] || '').toString().trim());
       }
       return _respond({ success: true, name: name }, callback);

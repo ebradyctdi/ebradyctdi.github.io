@@ -125,7 +125,7 @@
     <div class="modal-body">
       <label class="form-label">Configuration Name</label>
       <input type="text" class="form-input" id="cfgName" placeholder="e.g. AWAT(CH-EQ-74)-AB-1CO-AS-0">
-      <label class="form-label" style="margin-top:16px;">Major Materials (up to 10)</label>
+      <label class="form-label" style="margin-top:16px;">Major Materials (up to 15)</label>
       <div class="mat-grid" id="matGrid"></div>
     </div>
     <div class="modal-footer">
@@ -208,7 +208,7 @@ function renderConfigs() {
   configs.forEach(c => {
     const name = (c['Configuration']||'').toString();
     const mats = [];
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= 15; i++) {
       const m = (c['Major Material ' + i]||'').toString().trim();
       if (m && m !== '-') mats.push(m);
     }
@@ -223,7 +223,7 @@ function renderConfigs() {
 
 function buildMatGrid() {
   let html = '';
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= 15; i++) {
     html += '<div><label class="form-label" style="margin-top:0;">Material ' + i + '</label>'
       + '<input type="text" class="form-input sm" id="mat' + i + '" placeholder="Material ' + i + '"></div>';
   }
@@ -247,7 +247,7 @@ function openEditModal(name) {
   buildMatGrid();
   const cfg = configs.find(c => (c['Configuration']||'').toString() === name);
   if (cfg) {
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= 15; i++) {
       const val = (cfg['Major Material ' + i]||'').toString().trim();
       document.getElementById('mat' + i).value = (val === '-' ? '' : val);
     }
@@ -267,7 +267,7 @@ async function saveConfig() {
 
   const params = { action: editMode === 'edit' ? 'updateconfig' : 'addconfig', name: name };
   if (editMode === 'edit') params.origname = editOrigName;
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= 15; i++) {
     params['mat' + i] = document.getElementById('mat' + i).value.trim();
   }
 

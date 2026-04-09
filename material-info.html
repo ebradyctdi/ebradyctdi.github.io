@@ -261,7 +261,7 @@ function onPOChange() {
   if (selectedConfig) {
     const cfg = allConfigs.find(c => (c['Configuration']||'').toString().trim() === selectedConfig);
     if (cfg) {
-      for (let i = 1; i <= 10; i++) {
+      for (let i = 1; i <= 15; i++) {
         const m = (cfg['Major Material ' + i]||'').toString().trim();
         if (m && m !== '-') configMaterials.push(m);
       }
