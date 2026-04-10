@@ -67,6 +67,24 @@
   .empty-state { text-align: center; padding: 30px; color: #aaa; font-size: 13px; }
 
   @media (max-width: 900px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } .grid-2 { grid-template-columns: 1fr; } .pipeline { flex-wrap: wrap; } .quick-links { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    table { display: block; overflow-x: auto; white-space: nowrap; }
+    thead { display: table; width: 100%; }
+    tbody { display: table; width: 100%; }
+  }
+  @media (min-width: 769px) {
+    .hamburger { display: none; }
+    .sidebar-overlay { display: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -92,8 +110,9 @@
   </div>
 </nav>
 <div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
   <div class="header">
-    <div><h1>AWAT Production Tracker</h1><div class="header-sub">CTDI - Alburtis &bull; Overview</div></div>
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>AWAT Production Tracker</h1><div class="header-sub">CTDI - Alburtis &bull; Overview</div></div>
     <div class="header-right">
       <span id="headerUser" onclick="changeUser()" style="font-size:11px;color:rgba(255,255,255,0.8);cursor:pointer;padding:4px 10px;background:rgba(255,255,255,0.1);border-radius:12px;" title="Click to change user"></span>
       <span class="status-dot disconnected" id="statusDot"></span>
@@ -317,6 +336,11 @@ function render() {
     ).join('');
   }
 }
+
+// Mobile sidebar toggle
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+document.querySelectorAll('.sidebar-nav a').forEach(a => a.addEventListener('click', closeSidebar));
 
 loadData();
 </script>

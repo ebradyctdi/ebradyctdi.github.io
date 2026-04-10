@@ -99,6 +99,24 @@
   .btn-confirm:disabled { background: #ccc; }
   .btn-cancel { background: #e9ecef; color: #333; }
   .btn-cancel:hover { background: #dee2e6; }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    table { display: block; overflow-x: auto; white-space: nowrap; }
+    thead { display: table; width: 100%; }
+    tbody { display: table; width: 100%; }
+  }
+  @media (min-width: 769px) {
+    .hamburger { display: none; }
+    .sidebar-overlay { display: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -126,9 +144,10 @@
 </nav>
 
 <div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
   <div class="header">
     <div>
-      <h1>Start Build</h1>
+      <button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Start Build</h1>
       <div class="header-sub">Select a PO to begin cabinet build</div>
     </div>
     <div class="header-right">
@@ -314,6 +333,11 @@ function showToast(msg, type) {
   t.style.transform = 'translateX(0)';
   setTimeout(() => { t.style.transform = 'translateX(120%)'; }, 2500);
 }
+
+// Mobile sidebar toggle
+function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+document.querySelectorAll('.sidebar-nav a').forEach(a => a.addEventListener('click', closeSidebar));
 
 // Init
 loadOrders();
