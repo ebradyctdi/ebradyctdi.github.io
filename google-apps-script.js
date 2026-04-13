@@ -249,6 +249,60 @@ function doGet(e) {
       return _respond({ success: true, po: po, qcDate: ts }, callback);
     }
 
+    // ---- MATERIAL SEARCH (by PO or serial number) ----
+    if (action === 'materialsearch') {
+      var matSheet = ss.getSheetByName('Material Info');
+      if (!matSheet) return _respond({ success: false, error: 'Sheet "Material Info" not found' }, callback);
+
+      var query = (e.parameter.query || '').toString().trim();
+      if (!query) return _respond({ success: false, error: 'Search query is required' }, callback);
+      var searchType = (e.parameter.searchType || '').toString().trim(); // 'po' or 'serial'
+
+      var data = matSheet.getDataRange().getValues();
+      if (data.length <= 1) return _respond({ success: true, data: [], query: query }, callback);
+
+      var headers = data[0];
+      var rows = [];
+      for (var i = 1; i < data.length; i++) {
+        var po = data[i][0].toString().trim();
+        var component = data[i][1].toString().trim();
+        var serial = data[i][2].toString().trim();
+        var match = false;
+        if (searchType === 'po') {
+          match = (po !== '' && po === query);
+        } else if (searchType === 'serial') {
+          match = (serial !== '' && serial.indexOf(query) >= 0);
+        } else {
+          match = (po !== '' && po.indexOf(query) >= 0) || (serial !== '' && serial.indexOf(query) >= 0);
+        }
+        if (match) {
+          var row = {};
+          headers.forEach(function(h, j) { row[h] = data[i][j]; });
+          rows.push(row);
+        }
+      }
+
+      // Also get PO details from Received Orders for matched POs
+      var poDetails = {};
+      if (rows.length > 0) {
+        var roData = receivedSheet.getDataRange().getValues();
+        var roHeaders = roData[0];
+        for (var i = 1; i < roData.length; i++) {
+          var roPO = roData[i][0].toString().trim();
+          for (var j = 0; j < rows.length; j++) {
+            if (rows[j]['PO Number'].toString().trim() === roPO && !poDetails[roPO]) {
+              var detail = {};
+              roHeaders.forEach(function(h, k) { detail[h] = roData[i][k]; });
+              poDetails[roPO] = detail;
+              break;
+            }
+          }
+        }
+      }
+
+      return _respond({ success: true, data: rows, poDetails: poDetails, query: query }, callback);
+    }
+
     // ---- MATERIAL INFO ----
     if (action === 'materialinfo') {
       var matSheet = ss.getSheetByName('Material Info');

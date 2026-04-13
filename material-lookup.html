@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AWAT - Ship Out</title>
+<title>AWAT - Material Lookup</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
@@ -14,7 +14,7 @@
   .sidebar-nav { flex: 1; padding: 12px 0; }
   .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
   .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
-  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #20c997; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #6f42c1; }
   .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
   .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
   .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
@@ -27,35 +27,33 @@
   .status-dot.disconnected { background: #dc3545; }
   .status-dot.pending { background: #fd7e14; }
   .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
-  .container { max-width: 900px; margin: 0 auto; padding: 24px; width: 100%; }
+  .container { max-width: 960px; margin: 0 auto; padding: 24px; width: 100%; }
   .card { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
-  .card h2 { font-size: 16px; color: #1a3a5c; margin-bottom: 16px; border-bottom: 2px solid #1a3a5c; padding-bottom: 8px; }
-  .po-table { width: 100%; border-collapse: collapse; }
-  .po-table th { background: #f0f2f5; padding: 10px 12px; font-size: 11px; text-transform: uppercase; color: #666; text-align: left; }
-  .po-table td { padding: 12px; font-size: 14px; border-bottom: 1px solid #eee; }
-  .po-table tr:hover td { background: #f8f9fa; }
-  .po-table .po-num { font-weight: 600; font-family: Consolas, monospace; }
-  .po-table .meta { font-size: 12px; color: #888; font-family: Consolas, monospace; }
-  .ship-btn { padding: 8px 20px; background: #20c997; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: background 0.2s; }
-  .ship-btn:hover { background: #1baa80; }
-  .empty-state { text-align: center; padding: 60px 20px; color: #aaa; }
-  .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
-  .empty-state p { font-size: 14px; }
+
+  .search-wrap { display: flex; gap: 12px; align-items: center; }
+  .search-input { flex: 1; padding: 14px 18px; border: 2px solid #ddd; border-radius: 8px; font-size: 18px; font-family: Consolas, monospace; transition: border-color 0.2s; }
+  .search-input:focus { border-color: #6f42c1; outline: none; }
+  .search-btn { padding: 14px 28px; background: #6f42c1; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: background 0.15s; }
+  .search-btn:hover { background: #5a32a3; }
+  .search-btn:disabled { background: #ccc; cursor: default; }
+
+  .po-detail { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; padding: 16px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #6f42c1; }
+  .po-detail-item .label { font-size: 10px; text-transform: uppercase; color: #888; letter-spacing: 0.5px; }
+  .po-detail-item .value { font-size: 14px; font-weight: 600; font-family: Consolas, monospace; margin-top: 2px; color: #1a3a5c; }
+
+  .result-table { width: 100%; border-collapse: collapse; }
+  .result-table th { background: #1a3a5c; color: white; padding: 10px 12px; font-size: 11px; text-transform: uppercase; text-align: left; }
+  .result-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #eee; }
+  .result-table tr:hover td { background: #f8f9fa; }
+  .result-table .po-num { font-weight: 600; font-family: Consolas, monospace; color: #1a3a5c; }
+  .result-table .meta { font-family: Consolas, monospace; font-size: 12px; color: #555; }
+
+  .po-group-header { font-size: 15px; font-weight: 700; color: #1a3a5c; margin: 20px 0 8px; padding-bottom: 6px; border-bottom: 2px solid #6f42c1; }
+  .po-group-header:first-child { margin-top: 0; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: #aaa; font-size: 14px; }
   .refresh-btn { padding: 8px 16px; background: white; color: #1a3a5c; border: 1px solid #1a3a5c; border-radius: 4px; cursor: pointer; font-size: 12px; }
   .refresh-btn:hover { background: #f0f2f5; }
-  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
-  .modal-overlay.show { display: flex; }
-  .modal { background: white; border-radius: 10px; padding: 28px; max-width: 420px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.25); text-align: center; }
-  .modal h3 { font-size: 18px; color: #1a3a5c; margin-bottom: 8px; }
-  .modal p { font-size: 14px; color: #666; margin-bottom: 24px; }
-  .modal .po-highlight { font-size: 22px; font-weight: 700; color: #1a3a5c; font-family: Consolas, monospace; margin: 12px 0; }
-  .modal-btns { display: flex; gap: 12px; justify-content: center; }
-  .modal-btns button { padding: 10px 28px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s; }
-  .btn-confirm { background: #20c997; color: white; }
-  .btn-confirm:hover { background: #1baa80; }
-  .btn-confirm:disabled { background: #ccc; }
-  .btn-cancel { background: #e9ecef; color: #333; }
-  .btn-cancel:hover { background: #dee2e6; }
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
     .sidebar.open { transform: translateX(0); }
@@ -66,6 +64,10 @@
     .header h1 { font-size: 16px; }
     .container { padding: 16px; }
     .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+    .search-wrap { flex-direction: column; }
+    .search-input { font-size: 16px; }
+    .po-detail { grid-template-columns: 1fr 1fr; }
+    .search-grid { grid-template-columns: 1fr !important; }
     table { display: block; overflow-x: auto; white-space: nowrap; }
     thead { display: table; width: 100%; }
     tbody { display: table; width: 100%; }
@@ -84,7 +86,7 @@
     <a href="overview.html"><span class="icon">🏠</span> Overview</a>
     <a href="wip.html"><span class="icon">🏭</span> WIP</a>
     <a href="infirmary.html"><span class="icon">🏥</span> Infirmary</a>
-    <a href="material-lookup.html"><span class="icon">🔎</span> Material Lookup</a>
+    <a href="material-lookup.html" class="active"><span class="icon">🔎</span> Material Lookup</a>
     <a href="history.html"><span class="icon">📜</span> Ship History</a>
     <div class="nav-section">Apps</div>
     <a href="receive-order.html"><span class="icon">📦</span> Receive Order</a>
@@ -93,7 +95,7 @@
     <a href="build-complete.html"><span class="icon">🏗️</span> Assembly Complete</a>
     <a href="test-results.html"><span class="icon">✔️</span> Test Results</a>
     <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
-    <a href="ship-out.html" class="active"><span class="icon">🚚</span> Ship Out</a>
+    <a href="ship-out.html"><span class="icon">🚚</span> Ship Out</a>
     <a href="photo-capture.html"><span class="icon">📸</span> Photo Capture</a>
     <div class="nav-section">System</div>
     <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
@@ -103,7 +105,7 @@
 <div class="main-wrap">
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
   <div class="header">
-    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Ship Out</h1><div class="header-sub">Tender POs that have passed QC</div></div>
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Material Lookup</h1><div class="header-sub">Search by PO number or serial number</div></div>
     <div class="header-right">
       <span id="headerUser" onclick="changeUser()" style="font-size:11px;color:rgba(255,255,255,0.8);cursor:pointer;padding:4px 10px;background:rgba(255,255,255,0.1);border-radius:12px;" title="Click to change user"></span>
       <span class="status-dot disconnected" id="statusDot"></span>
@@ -111,36 +113,38 @@
     </div>
   </div>
   <div class="container">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h2 style="margin-bottom:0;border:none;padding:0;">QC Passed <span id="poCount" style="font-size:13px;color:#888;font-weight:400;"></span></h2>
-        <input type="text" id="poScan" placeholder="Scan PO# to filter..." autocomplete="off" oninput="filterPOs()" style="padding:8px 14px;border:1px solid #ddd;border-radius:4px;font-size:13px;font-family:Consolas,monospace;width:220px;">
-        <button class="refresh-btn" onclick="loadOrders()">Refresh</button>
+    <!-- SEARCH CARDS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <div class="card">
+        <h2 style="font-size:16px;color:#6f42c1;margin-bottom:14px;border-bottom:2px solid #6f42c1;padding-bottom:8px;">🔎 Search by PO Number</h2>
+        <div style="display:flex;gap:10px;">
+          <input type="text" class="search-input" id="poSearchInput" placeholder="Enter PO#..." style="font-size:16px;" onkeydown="if(event.key==='Enter')doSearch('po')">
+          <button class="search-btn" style="padding:12px 20px;font-size:14px;" onclick="doSearch('po')">Search</button>
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:8px;">Find all materials recorded for a PO</div>
       </div>
-      <div id="poList">
-        <div class="empty-state"><div class="emoji">⏳</div><p>Connecting to AWAT Data...</p></div>
+      <div class="card">
+        <h2 style="font-size:16px;color:#6f42c1;margin-bottom:14px;border-bottom:2px solid #6f42c1;padding-bottom:8px;">🔎 Search by Serial Number</h2>
+        <div style="display:flex;gap:10px;">
+          <input type="text" class="search-input" id="serialSearchInput" placeholder="Enter Serial#..." style="font-size:16px;" onkeydown="if(event.key==='Enter')doSearch('serial')">
+          <button class="search-btn" style="padding:12px 20px;font-size:14px;" onclick="doSearch('serial')">Search</button>
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:8px;">Find which PO a serial number belongs to</div>
       </div>
     </div>
+
+    <!-- RESULTS -->
+    <div id="resultsArea"></div>
   </div>
 </div>
-<div class="modal-overlay" id="confirmModal">
-  <div class="modal">
-    <h3>Ship Out?</h3>
-    <div class="po-highlight" id="modalPO"></div>
-    <p>This will change the status to "Tender" and record the Transfer Out Date.</p>
-    <div class="modal-btns">
-      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-confirm" id="confirmBtn" onclick="confirmShip()">Ship Out</button>
-    </div>
-  </div>
-</div>
+
 <div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
 </body>
 </html>
 
 <script>
 const URL_KEY = 'awat_script_url';
-let scriptUrl = '', shipOrders = [], selectedPO = null, _jsonpCounter = 0;
+let scriptUrl = '', _jsonpCounter = 0;
 try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzNXxZDQN9WkLmZSUFUrCYpxPEeLjRG-ljTtI8k12FwqufWN9RUN-_K65rp3kuzohvz/exec'; } catch(e) {}
 
 const USER_KEY = 'awat_username';
@@ -152,10 +156,8 @@ updateUserDisplay();
 
 function fmtDate(str) {
   if (!str) return '—';
-  const s = str.toString().trim();
-  if (!s) return '—';
-  const d = new Date(s);
-  if (isNaN(d.getTime())) return s;
+  const s = str.toString().trim(); if (!s) return '—';
+  const d = new Date(s); if (isNaN(d.getTime())) return s;
   return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
 }
 
@@ -179,88 +181,81 @@ function setStatus(state, label) {
   document.getElementById('statusLabel').textContent = label;
 }
 
-async function loadOrders() {
-  if (!scriptUrl) {
-    setStatus('disconnected', 'No URL configured');
-    document.getElementById('poList').innerHTML = '<div class="empty-state"><div class="emoji">⚠️</div><p>No Apps Script URL found. Go to <a href="settings.html">Settings</a> to configure.</p></div>';
-    return;
-  }
-  setStatus('pending', 'Loading...');
+async function doSearch(type) {
+  const input = type === 'serial' ? document.getElementById('serialSearchInput') : document.getElementById('poSearchInput');
+  const query = input.value.trim();
+  if (!query) { showToast('Enter a ' + (type === 'serial' ? 'serial number' : 'PO number'), 'error'); return; }
+  if (!scriptUrl) { setStatus('disconnected', 'No URL — go to Settings'); return; }
+
+  // Clear the other field
+  if (type === 'serial') document.getElementById('poSearchInput').value = '';
+  else document.getElementById('serialSearchInput').value = '';
+
+  setStatus('pending', 'Searching...');
+  document.getElementById('resultsArea').innerHTML = '<div class="card"><div class="empty-state">Searching...</div></div>';
+
   try {
-    const json = await jsonpRequest(scriptUrl, {});
+    const json = await jsonpRequest(scriptUrl, { action: 'materialsearch', query: query, searchType: type });
+    setStatus('connected', 'Connected');
     if (json.success) {
-      setStatus('connected', 'Connected');
-      shipOrders = (json.data || []).filter(r => (r['Status']||'').toString().trim() === 'QC Passed');
-      renderOrders();
-    } else { throw new Error(json.error || 'Unknown error'); }
-  } catch(err) {
-    setStatus('disconnected', 'Connection failed');
-    document.getElementById('poList').innerHTML = '<div class="empty-state"><div class="emoji">❌</div><p>Could not connect: '+err.message+'</p></div>';
-  }
-}
-
-function filterPOs() { renderOrders(); }
-document.getElementById('poScan').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') { e.preventDefault(); const btns = document.querySelectorAll('.start-btn,.complete-btn,.pass-btn,.fail-btn,.ship-btn'); if (btns.length === 1) btns[0].click(); }
-});
-
-function renderOrders() {
-  const container = document.getElementById('poList');
-  let filtered = shipOrders; const scan = (document.getElementById('poScan')||{}).value||''; if (scan.trim()) filtered = filtered.filter(o => (o['PO Number']||'').toString().includes(scan.trim()));
-  document.getElementById('poCount').textContent = filtered.length ? '('+filtered.length+')' : '';
-  if (!filtered.length) {
-    container.innerHTML = '<div class="empty-state"><div class="emoji">✅</div><p>No POs ready to ship. All caught up.</p></div>';
-    return;
-  }
-  let html = '<table class="po-table"><thead><tr><th>PO Number</th><th>Location</th><th>Configuration</th><th>QC Complete</th><th></th></tr></thead><tbody>';
-  filtered.forEach(o => {
-    const po = (o['PO Number']||'').toString();
-    const loc = (o['Location']||'').toString();
-    const config = (o['Configuration']||'').toString();
-    const qcDate = (o['QC Complete Date']||'').toString();
-    html += '<tr>'
-      +'<td class="po-num">'+po+'</td>'
-      +'<td class="meta">'+(loc||'—')+'</td>'
-      +'<td class="meta">'+(config||'—')+'</td>'
-      +'<td class="meta">'+fmtDate(qcDate)+'</td>'
-      +'<td style="text-align:right;"><button class="ship-btn" onclick="openModal(\''+po.replace(/'/g,"\\'")+'\')">Ship Out</button></td>'
-      +'</tr>';
-  });
-  html += '</tbody></table>';
-  container.innerHTML = html;
-}
-
-function openModal(po) {
-  selectedPO = po;
-  document.getElementById('modalPO').textContent = 'PO#' + po;
-  document.getElementById('confirmModal').classList.add('show');
-  document.getElementById('confirmBtn').disabled = false;
-  document.getElementById('confirmBtn').textContent = 'Ship Out';
-}
-
-function closeModal() {
-  document.getElementById('confirmModal').classList.remove('show');
-  selectedPO = null;
-}
-
-async function confirmShip() {
-  if (!selectedPO) return;
-  const btn = document.getElementById('confirmBtn');
-  btn.disabled = true; btn.textContent = 'Shipping...';
-  try {
-    const json = await jsonpRequest(scriptUrl, { action: 'shipout', po: selectedPO, user: getUser() });
-    if (json.success) {
-      showToast('PO#' + selectedPO + ' shipped — status: Tender', 'success');
-      closeModal();
-      loadOrders();
+      renderResults(json.data || [], json.poDetails || {}, query, type);
     } else {
-      showToast(json.error || 'Failed', 'error');
-      btn.disabled = false; btn.textContent = 'Ship Out';
+      throw new Error(json.error || 'Search failed');
     }
   } catch(err) {
-    showToast('Error: ' + err.message, 'error');
-    btn.disabled = false; btn.textContent = 'Ship Out';
+    setStatus('disconnected', 'Connection failed');
+    document.getElementById('resultsArea').innerHTML = '<div class="card"><div class="empty-state" style="color:#dc3545;">Error: ' + err.message + '</div></div>';
   }
+  input.focus();
+}
+
+function renderResults(data, poDetails, query, type) {
+  const area = document.getElementById('resultsArea');
+  const label = type === 'serial' ? 'serial number' : 'PO number';
+
+  if (!data.length) {
+    area.innerHTML = '<div class="card"><div class="empty-state">No results found for ' + label + ' "' + query.replace(/</g,'&lt;') + '"</div></div>';
+    return;
+  }
+
+  // Group results by PO
+  const groups = {};
+  data.forEach(row => {
+    const po = (row['PO Number'] || '').toString();
+    if (!groups[po]) groups[po] = [];
+    groups[po].push(row);
+  });
+
+  let html = '';
+  const poKeys = Object.keys(groups);
+
+  poKeys.forEach(po => {
+    const detail = poDetails[po] || {};
+    html += '<div class="card">';
+    html += '<div class="po-group-header">PO#' + po + '</div>';
+
+    // PO detail bar
+    html += '<div class="po-detail">';
+    html += '<div class="po-detail-item"><div class="label">PO Number</div><div class="value">' + (po || '—') + '</div></div>';
+    html += '<div class="po-detail-item"><div class="label">Configuration</div><div class="value">' + (detail['Configuration'] || '—') + '</div></div>';
+    html += '<div class="po-detail-item"><div class="label">Location</div><div class="value">' + (detail['Location'] || '—') + '</div></div>';
+    html += '<div class="po-detail-item"><div class="label">Status</div><div class="value">' + (detail['Status'] || '—') + '</div></div>';
+    html += '</div>';
+
+    // Materials table
+    html += '<table class="result-table"><thead><tr><th>PO Number</th><th>Component</th><th>Serial Number</th><th>Timestamp</th></tr></thead><tbody>';
+    groups[po].forEach(row => {
+      html += '<tr>';
+      html += '<td class="po-num">' + (row['PO Number'] || '—') + '</td>';
+      html += '<td class="meta">' + (row['Component'] || '—') + '</td>';
+      html += '<td class="meta">' + (row['Serial Number'] || '—') + '</td>';
+      html += '<td class="meta">' + fmtDate(row['Timestamp']) + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  });
+
+  area.innerHTML = html;
 }
 
 function showToast(msg, type) {
@@ -275,5 +270,6 @@ function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('
 function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
 document.querySelectorAll('.sidebar-nav a').forEach(a => a.addEventListener('click', closeSidebar));
 
-loadOrders();
+// Auto-focus PO search input on load
+document.getElementById('poSearchInput').focus();
 </script>
