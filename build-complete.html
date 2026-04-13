@@ -128,7 +128,7 @@
     <div class="nav-section">Apps</div>
     <a href="receive-order.html"><span class="icon">📦</span> Receive Order</a>
     <a href="start-build.html"><span class="icon">🔨</span> Start Build</a>
-    <a href="material-info.html"><span class="icon">📋</span> Material Info</a>
+    <a href="material-info.html"><span class="icon">📋</span> Material Info Capture</a>
     <a href="build-complete.html" class="active"><span class="icon">🏗️</span> Assembly Complete</a>
     <a href="test-results.html"><span class="icon">✔️</span> Test Results</a>
     <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
@@ -312,7 +312,7 @@ async function confirmComplete() {
       document.querySelector('.modal p').innerHTML = '<span style="color:#dc3545;font-weight:600;">Material info required before completing assembly.</span><br><br>'
         + '<span style="font-size:13px;">Missing serial numbers for:</span><br>'
         + (json.missing || []).map(function(m) { return '<span style="font-family:Consolas,monospace;font-size:13px;color:#1a3a5c;">• ' + m + '</span>'; }).join('<br>')
-        + '<br><br><a href="material-info.html" style="color:#1a3a5c;font-weight:600;">Go to Material Info →</a>';
+        + '<br><br><a href="material-info.html" style="color:#1a3a5c;font-weight:600;">Go to Material Info Capture →</a>';
     } else {
       showToast(json.error || 'Failed', 'error');
       btn.disabled = false; btn.textContent = 'Assembly Complete';
