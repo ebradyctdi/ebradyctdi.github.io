@@ -56,6 +56,7 @@
   .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
   .badge-received { background: #cce5ff; color: #004085; }
   .badge-assembly { background: #fff3cd; color: #856404; }
+  .badge-testing { background: #fce4ec; color: #880e4f; }
   .badge-awaitqc { background: #d4edda; color: #155724; }
   .badge-qcpassed { background: #d1ecf1; color: #0c5460; }
   .badge-qcfailed { background: #f8d7da; color: #721c24; }
@@ -96,7 +97,8 @@
     <a href="receive-order.html"><span class="icon">📦</span> Receive Order</a>
     <a href="start-build.html"><span class="icon">🔨</span> Start Build</a>
     <a href="material-info.html"><span class="icon">📋</span> Material Info</a>
-    <a href="build-complete.html"><span class="icon">✅</span> Build Complete</a>
+    <a href="build-complete.html"><span class="icon">🏗️</span> Assembly Complete</a>
+    <a href="test-results.html"><span class="icon">✔️</span> Test Results</a>
     <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
     <a href="ship-out.html"><span class="icon">🚚</span> Ship Out</a>
     <a href="photo-capture.html"><span class="icon">📸</span> Photo Capture</a>
@@ -228,6 +230,7 @@ function renderKPIs() {
   const colors = {
     'Received, Awaiting Start': '#0d6efd',
     'In Assembly': '#fd7e14',
+    'Awaiting Testing': '#e91e63',
     'Awaiting QC': '#28a745',
     'QC Passed': '#17a2b8',
     'In Infirmary': '#dc3545',
@@ -240,6 +243,7 @@ function renderKPIs() {
   const pipeSteps = [
     { label: 'Received, Awaiting Start', color: '#0d6efd', link: 'start-build.html' },
     { label: 'In Assembly', color: '#fd7e14', link: 'build-complete.html' },
+    { label: 'Awaiting Testing', color: '#e91e63', link: 'test-results.html' },
     { label: 'Awaiting QC', color: '#28a745', link: 'qc-result.html' },
     { label: 'QC Passed', color: '#17a2b8', link: 'ship-out.html' },
   ];
@@ -267,6 +271,7 @@ function buildStatusFilter() {
 function badgeClass(status) {
   if (status.includes('Awaiting Start')) return 'badge-received';
   if (status === 'In Assembly') return 'badge-assembly';
+  if (status === 'Awaiting Testing') return 'badge-testing';
   if (status === 'Awaiting QC') return 'badge-awaitqc';
   if (status === 'QC Passed') return 'badge-qcpassed';
   if (status === 'QC Failed') return 'badge-qcfailed';

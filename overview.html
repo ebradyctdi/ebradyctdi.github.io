@@ -100,7 +100,8 @@
     <a href="receive-order.html"><span class="icon">📦</span> Receive Order</a>
     <a href="start-build.html"><span class="icon">🔨</span> Start Build</a>
     <a href="material-info.html"><span class="icon">📋</span> Material Info</a>
-    <a href="build-complete.html"><span class="icon">✅</span> Build Complete</a>
+    <a href="build-complete.html"><span class="icon">🏗️</span> Assembly Complete</a>
+    <a href="test-results.html"><span class="icon">✔️</span> Test Results</a>
     <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
     <a href="ship-out.html"><span class="icon">🚚</span> Ship Out</a>
     <a href="photo-capture.html"><span class="icon">📸</span> Photo Capture</a>
@@ -240,6 +241,7 @@ function render() {
 
   const awaiting = statuses['Received, Awaiting Start'] || 0;
   const assembly = statuses['In Assembly'] || 0;
+  const awaitTesting = statuses['Awaiting Testing'] || 0;
   const awaitQC = statuses['Awaiting QC'] || 0;
   const qcPassed = statuses['QC Passed'] || 0;
   const infirmary = statuses['In Infirmary'] || 0;
@@ -260,6 +262,7 @@ function render() {
   const wipColors = {
     'Received, Awaiting Start': '#0d6efd',
     'In Assembly': '#fd7e14',
+    'Awaiting Testing': '#e91e63',
     'Awaiting QC': '#28a745',
     'QC Passed': '#17a2b8',
     'In Infirmary': '#dc3545',
@@ -288,6 +291,7 @@ function render() {
   const steps = [
     { label: 'Awaiting Start', count: awaiting, color: '#0d6efd', link: 'start-build.html' },
     { label: 'In Assembly', count: assembly, color: '#fd7e14', link: 'build-complete.html' },
+    { label: 'Awaiting Testing', count: awaitTesting, color: '#e91e63', link: 'test-results.html' },
     { label: 'Awaiting QC', count: awaitQC, color: '#28a745', link: 'qc-result.html' },
     { label: 'QC Passed', count: qcPassed, color: '#17a2b8', link: 'ship-out.html' },
     { label: 'Tendered', count: tendered, color: '#28a745', link: 'history.html' },

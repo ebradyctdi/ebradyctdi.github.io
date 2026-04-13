@@ -115,12 +115,84 @@ function doGet(e) {
         return _respond({ success: false, error: 'PO#' + po + ' status is "' + status + '", expected "In Assembly"' }, callback);
       }
 
+      // Check material info completeness
+      var config = receivedSheet.getRange(row, 3).getValue().toString().trim(); // Column C = Configuration
+      if (config) {
+        var cfgSheet = ss.getSheetByName('Cabinet Configs');
+        if (cfgSheet) {
+          var cfgData = cfgSheet.getDataRange().getValues();
+          var cfgHeaders = cfgData[0];
+          var requiredMats = [];
+          for (var ci = 1; ci < cfgData.length; ci++) {
+            if (cfgData[ci][0].toString().trim() === config) {
+              for (var mi = 1; mi <= 15; mi++) {
+                var matName = (cfgData[ci][mi] || '').toString().trim();
+                if (matName && matName !== '-') requiredMats.push(matName);
+              }
+              break;
+            }
+          }
+
+          if (requiredMats.length > 0) {
+            var matSheet = ss.getSheetByName('Material Info');
+            var recordedComponents = [];
+            if (matSheet && matSheet.getLastRow() > 1) {
+              var matData = matSheet.getDataRange().getValues();
+              for (var mi = 1; mi < matData.length; mi++) {
+                if (matData[mi][0].toString().trim() === po) {
+                  recordedComponents.push(matData[mi][1].toString().trim());
+                }
+              }
+            }
+
+            var missing = [];
+            for (var ri = 0; ri < requiredMats.length; ri++) {
+              if (recordedComponents.indexOf(requiredMats[ri]) === -1) {
+                missing.push(requiredMats[ri]);
+              }
+            }
+
+            if (missing.length > 0) {
+              return _respond({
+                success: false,
+                error: 'MISSING_MATERIALS',
+                message: 'Material info required for: ' + missing.join(', '),
+                missing: missing
+              }, callback);
+            }
+          }
+        }
+      }
+
+      var now = new Date();
+      var ts = _ts(now);
+      receivedSheet.getRange(row, 4).setValue('Awaiting Testing');
+      receivedSheet.getRange(row, 7).setValue(ts);
+      historySheet.appendRow([po, ts, 'Assembly Complete APP', 'In Assembly', 'Awaiting Testing', user]);
+      return _respond({ success: true, po: po, completeDate: ts }, callback);
+    }
+
+    // ---- TEST RESULT (move from Awaiting Testing to Awaiting QC) ----
+    if (action === 'testresult') {
+      if (!historySheet) return _respond({ success: false, error: 'Sheet "Transaction History" not found' }, callback);
+      var po = (e.parameter.po || '').toString().trim();
+      if (!po) return _respond({ success: false, error: 'PO Number is required' }, callback);
+
+      var idx = _findPO(receivedSheet, po);
+      if (idx === -1) return _respond({ success: false, error: 'PO#' + po + ' not found' }, callback);
+
+      var row = idx + 2;
+      var status = receivedSheet.getRange(row, 4).getValue().toString().trim();
+      if (status !== 'Awaiting Testing') {
+        return _respond({ success: false, error: 'PO#' + po + ' status is "' + status + '", expected "Awaiting Testing"' }, callback);
+      }
+
       var now = new Date();
       var ts = _ts(now);
       receivedSheet.getRange(row, 4).setValue('Awaiting QC');
-      receivedSheet.getRange(row, 7).setValue(ts);
-      historySheet.appendRow([po, ts, 'Build Complete APP', 'In Assembly', 'Awaiting QC', user]);
-      return _respond({ success: true, po: po, completeDate: ts }, callback);
+      receivedSheet.getRange(row, 8).setValue(ts); // Test Results Date = col H
+      historySheet.appendRow([po, ts, 'Test Results APP', 'Awaiting Testing', 'Awaiting QC', user]);
+      return _respond({ success: true, po: po, testDate: ts }, callback);
     }
 
     // ---- QC PASS ----
@@ -141,7 +213,7 @@ function doGet(e) {
       var now = new Date();
       var ts = _ts(now);
       receivedSheet.getRange(row, 4).setValue('QC Passed');
-      receivedSheet.getRange(row, 8).setValue(ts);
+      receivedSheet.getRange(row, 9).setValue(ts); // QC Result Date = col I
       historySheet.appendRow([po, ts, 'QC Result APP', 'Awaiting QC', 'QC Passed', user]);
       return _respond({ success: true, po: po, qcDate: ts }, callback);
     }
@@ -165,7 +237,7 @@ function doGet(e) {
       var now = new Date();
       var ts = _ts(now);
       receivedSheet.getRange(row, 4).setValue('In Infirmary');
-      receivedSheet.getRange(row, 8).setValue(ts);
+      receivedSheet.getRange(row, 9).setValue(ts); // QC Result Date = col I
       historySheet.appendRow([po, ts, 'QC Result APP', 'Awaiting QC', 'In Infirmary', user]);
 
       // Write to Infirmary Notes

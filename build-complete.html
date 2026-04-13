@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AWAT - Build Complete</title>
+<title>AWAT - Assembly Complete</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
@@ -128,7 +128,8 @@
     <a href="receive-order.html"><span class="icon">📦</span> Receive Order</a>
     <a href="start-build.html"><span class="icon">🔨</span> Start Build</a>
     <a href="material-info.html"><span class="icon">📋</span> Material Info</a>
-    <a href="build-complete.html" class="active"><span class="icon">✅</span> Build Complete</a>
+    <a href="build-complete.html" class="active"><span class="icon">🏗️</span> Assembly Complete</a>
+    <a href="test-results.html"><span class="icon">✔️</span> Test Results</a>
     <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
     <a href="ship-out.html"><span class="icon">🚚</span> Ship Out</a>
     <a href="photo-capture.html"><span class="icon">📸</span> Photo Capture</a>
@@ -142,7 +143,7 @@
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
   <div class="header">
     <div>
-      <button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Build Complete</h1>
+      <button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Assembly Complete</h1>
       <div class="header-sub">Mark assembly complete and move to QC</div>
     </div>
     <div class="header-right">
@@ -168,12 +169,12 @@
 
 <div class="modal-overlay" id="confirmModal">
   <div class="modal">
-    <h3>Mark Build Complete?</h3>
+    <h3>Mark Assembly Complete?</h3>
     <div class="po-highlight" id="modalPO"></div>
-    <p>This will change the status to "Awaiting QC" and record the Assembly Complete Date as today.</p>
+    <p>This will change the status to "Awaiting Testing" and record the Assembly Complete Date.</p>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-confirm" id="confirmBtn" onclick="confirmComplete()">Complete Build</button>
+      <button class="btn-confirm" id="confirmBtn" onclick="confirmComplete()">Assembly Complete</button>
     </div>
   </div>
 </div>
@@ -284,7 +285,7 @@ function openModal(po) {
   document.getElementById('modalPO').textContent = 'PO#' + po;
   document.getElementById('confirmModal').classList.add('show');
   document.getElementById('confirmBtn').disabled = false;
-  document.getElementById('confirmBtn').textContent = 'Complete Build';
+  document.getElementById('confirmBtn').textContent = 'Assembly Complete';
 }
 
 function closeModal() {
@@ -299,16 +300,25 @@ async function confirmComplete() {
   try {
     const json = await jsonpRequest(scriptUrl, { action: 'buildcomplete', po: selectedPO, user: getUser() });
     if (json.success) {
-      showToast('PO#'+selectedPO+' assembly complete — moved to Awaiting QC', 'success');
+      showToast('PO#'+selectedPO+' assembly complete — moved to Awaiting Testing', 'success');
       closeModal();
+      document.getElementById('poScan').value = '';
       loadOrders();
+    } else if (json.error === 'MISSING_MATERIALS') {
+      showToast('Missing material info — cannot complete', 'error');
+      btn.disabled = false; btn.textContent = 'Assembly Complete';
+      // Show missing materials in modal
+      document.querySelector('.modal p').innerHTML = '<span style="color:#dc3545;font-weight:600;">Material info required before completing assembly.</span><br><br>'
+        + '<span style="font-size:13px;">Missing serial numbers for:</span><br>'
+        + (json.missing || []).map(function(m) { return '<span style="font-family:Consolas,monospace;font-size:13px;color:#1a3a5c;">• ' + m + '</span>'; }).join('<br>')
+        + '<br><br><a href="material-info.html" style="color:#1a3a5c;font-weight:600;">Go to Material Info →</a>';
     } else {
       showToast(json.error || 'Failed', 'error');
-      btn.disabled = false; btn.textContent = 'Complete Build';
+      btn.disabled = false; btn.textContent = 'Assembly Complete';
     }
   } catch(err) {
     showToast('Error: '+err.message, 'error');
-    btn.disabled = false; btn.textContent = 'Complete Build';
+    btn.disabled = false; btn.textContent = 'Assembly Complete';
   }
 }
 
