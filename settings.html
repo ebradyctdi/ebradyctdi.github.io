@@ -109,6 +109,12 @@
       <a href="https://docs.google.com/spreadsheets/d/1sLXr4M0oeOKAu-cedIZJpTba-nMVe8cEF-btVKCrGaY/edit" target="_blank" style="display:inline-block;padding:10px 20px;background:#1a3a5c;color:white;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">Open Google Sheet ↗</a>
     </div>
     <div class="card">
+      <h2>Weekly Backup Email</h2>
+      <p style="font-size:13px;color:#666;margin-bottom:12px;">Sends an Excel backup of the spreadsheet to ebrady@ctdi.com. Scheduled every Friday at 4:00 PM EST.</p>
+      <button onclick="sendBackupNow()" id="backupBtn" style="padding:10px 20px;background:#6f42c1;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">📧 Send Backup Now</button>
+      <div class="status-msg" id="backupMsg" style="margin-top:12px;"></div>
+    </div>
+    <div class="card">
       <h2>About</h2>
       <p style="font-size:13px;color:#666;line-height:1.6;">
         AWAT Production Tracker — CTDI Alburtis<br>
@@ -180,6 +186,29 @@ async function saveAndTest() {
       setMsg('Saved and connected. ' + (json.data ? json.data.length : 0) + ' orders in sheet.', 'success');
     } else { setMsg('URL saved but connection error: ' + (json.error || 'Unknown'), 'error'); }
   } catch(err) { setMsg('URL saved but connection failed: ' + err.message, 'error'); }
+}
+
+async function sendBackupNow() {
+  const url = localStorage.getItem(URL_KEY);
+  if (!url) { document.getElementById('backupMsg').textContent = 'No Apps Script URL configured.'; document.getElementById('backupMsg').className = 'status-msg error'; return; }
+  const btn = document.getElementById('backupBtn');
+  btn.disabled = true; btn.textContent = '📧 Sending...';
+  document.getElementById('backupMsg').textContent = 'Sending backup email...';
+  document.getElementById('backupMsg').className = 'status-msg pending';
+  try {
+    const json = await jsonpRequest(url, { action: 'sendbackup' });
+    if (json.success) {
+      document.getElementById('backupMsg').textContent = '✓ ' + (json.message || 'Backup email sent!');
+      document.getElementById('backupMsg').className = 'status-msg success';
+    } else {
+      document.getElementById('backupMsg').textContent = 'Error: ' + (json.error || 'Unknown');
+      document.getElementById('backupMsg').className = 'status-msg error';
+    }
+  } catch(err) {
+    document.getElementById('backupMsg').textContent = 'Failed: ' + err.message;
+    document.getElementById('backupMsg').className = 'status-msg error';
+  }
+  btn.disabled = false; btn.textContent = '📧 Send Backup Now';
 }
 // Mobile sidebar toggle
 function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }

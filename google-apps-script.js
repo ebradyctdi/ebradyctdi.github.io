@@ -672,6 +672,12 @@ function doGet(e) {
       return _respond({ success: true, photos: photos, folderUrl: poFolder.getUrl() }, callback);
     }
 
+    // ---- SEND BACKUP EMAIL ON DEMAND ----
+    if (action === 'sendbackup') {
+      weeklyBackupEmail();
+      return _respond({ success: true, message: 'Backup email sent to ebrady@ctdi.com' }, callback);
+    }
+
     // ---- Default: READ all orders ----
     var data = receivedSheet.getDataRange().getValues();
     if (data.length <= 1) return _respond({ success: true, data: [] }, callback);
@@ -769,4 +775,57 @@ function doPost(e) {
   } catch (err) {
     return _respond({ success: false, error: err.toString() });
   }
+}
+
+
+// ============================================================
+// WEEKLY BACKUP — Emails Excel copy of spreadsheet every Friday 4:00 PM EST
+// ============================================================
+// SETUP:
+// 1. Add this to your Apps Script
+// 2. Run setupWeeklyBackupTrigger() ONCE manually to create the trigger
+// 3. It will ask for email/Drive permissions — approve them
+// 4. After that, it runs automatically every Tuesday at 8:30 AM EST
+// ============================================================
+
+function weeklyBackupEmail() {
+  var recipients = 'ebrady@ctdi.com';
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var name = ss.getName();
+  var date = Utilities.formatDate(new Date(), 'America/New_York', 'M/d/yyyy h:mm a');
+
+  // Export as Excel (.xlsx)
+  var url = 'https://docs.google.com/spreadsheets/d/' + ss.getId() + '/export?format=xlsx';
+  var token = ScriptApp.getOAuthToken();
+  var response = UrlFetchApp.fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+  var blob = response.getBlob().setName(name + ' - Backup ' + Utilities.formatDate(new Date(), 'America/New_York', 'yyyy-MM-dd') + '.xlsx');
+
+  GmailApp.sendEmail(recipients,
+    'AWAT Production Tracker — Weekly Backup (' + date + ')',
+    'Attached is the weekly backup of the AWAT Production Tracker spreadsheet.\n\n'
+      + 'Generated: ' + date + ' EST\n'
+      + 'Sheet: ' + ss.getUrl() + '\n\n'
+      + 'This is an automated email sent every Friday at 4:00 PM EST.',
+    { attachments: [blob] }
+  );
+}
+
+// Run this function ONCE to set up the Friday 4:00 PM EST trigger
+function setupWeeklyBackupTrigger() {
+  // Remove any existing triggers for this function first
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'weeklyBackupEmail') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+
+  // Create new weekly trigger: Friday at 4:00 PM EST
+  ScriptApp.newTrigger('weeklyBackupEmail')
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.FRIDAY)
+    .atHour(16)
+    .nearMinute(0)
+    .inTimezone('America/New_York')
+    .create();
 }
