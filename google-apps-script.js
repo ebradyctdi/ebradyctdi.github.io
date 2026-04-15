@@ -678,6 +678,79 @@ function doGet(e) {
       return _respond({ success: true, message: 'Backup email sent to ebrady@ctdi.com' }, callback);
     }
 
+    // ---- READ PHOTO CONFIGS ----
+    if (action === 'readphotoconfigs') {
+      var pcSheet = ss.getSheetByName('Photo Configs');
+      if (!pcSheet) return _respond({ success: false, error: 'Sheet "Photo Configs" not found' }, callback);
+      var data = pcSheet.getDataRange().getValues();
+      if (data.length <= 1) return _respond({ success: true, data: {} }, callback);
+      var configs = {};
+      for (var i = 1; i < data.length; i++) {
+        var cfg = (data[i][0] || '').toString().trim();
+        var status = (data[i][1] || '').toString().trim();
+        var photo = (data[i][2] || '').toString().trim();
+        if (cfg && photo && photo !== '-') {
+          if (!configs[cfg]) configs[cfg] = [];
+          configs[cfg].push({ name: photo, status: status });
+        }
+      }
+      return _respond({ success: true, data: configs }, callback);
+    }
+
+    // ---- ADD PHOTO CONFIG ROW ----
+    if (action === 'addphotoconfig') {
+      var pcSheet = ss.getSheetByName('Photo Configs');
+      if (!pcSheet) return _respond({ success: false, error: 'Sheet "Photo Configs" not found' }, callback);
+      var cfg = (e.parameter.config || '').toString().trim();
+      var status = (e.parameter.status || '').toString().trim();
+      var photo = (e.parameter.photo || '').toString().trim();
+      if (!cfg || !photo) return _respond({ success: false, error: 'Configuration and Photo Name are required' }, callback);
+      pcSheet.appendRow([cfg, status, photo]);
+      return _respond({ success: true }, callback);
+    }
+
+    // ---- UPDATE PHOTO CONFIG ROW ----
+    if (action === 'updatephotoconfig') {
+      var pcSheet = ss.getSheetByName('Photo Configs');
+      if (!pcSheet) return _respond({ success: false, error: 'Sheet "Photo Configs" not found' }, callback);
+      var rowNum = parseInt(e.parameter.row || '0');
+      var status = (e.parameter.status || '').toString().trim();
+      var photo = (e.parameter.photo || '').toString().trim();
+      if (!rowNum || rowNum < 2) return _respond({ success: false, error: 'Invalid row' }, callback);
+      if (!photo) return _respond({ success: false, error: 'Photo Name is required' }, callback);
+      pcSheet.getRange(rowNum, 2).setValue(status);
+      pcSheet.getRange(rowNum, 3).setValue(photo);
+      return _respond({ success: true }, callback);
+    }
+
+    // ---- DELETE PHOTO CONFIG ROW ----
+    if (action === 'deletephotoconfig') {
+      var pcSheet = ss.getSheetByName('Photo Configs');
+      if (!pcSheet) return _respond({ success: false, error: 'Sheet "Photo Configs" not found' }, callback);
+      var rowNum = parseInt(e.parameter.row || '0');
+      if (!rowNum || rowNum < 2) return _respond({ success: false, error: 'Invalid row' }, callback);
+      pcSheet.deleteRow(rowNum);
+      return _respond({ success: true }, callback);
+    }
+
+    // ---- READ PHOTO CONFIGS RAW (with row numbers) ----
+    if (action === 'readphotoconfigsraw') {
+      var pcSheet = ss.getSheetByName('Photo Configs');
+      if (!pcSheet) return _respond({ success: false, error: 'Sheet "Photo Configs" not found' }, callback);
+      var data = pcSheet.getDataRange().getValues();
+      if (data.length <= 1) return _respond({ success: true, data: [] }, callback);
+      var rows = [];
+      for (var i = 1; i < data.length; i++) {
+        rows.push({
+          _row: i + 1,
+          config: (data[i][0] || '').toString().trim(),
+          status: (data[i][1] || '').toString().trim(),
+          photo: (data[i][2] || '').toString().trim()
+        });
+      }
+      return _respond({ success: true, data: rows }, callback);
+    }
+
     // ---- Default: READ all orders ----
     var data = receivedSheet.getDataRange().getValues();
     if (data.length <= 1) return _respond({ success: true, data: [] }, callback);
