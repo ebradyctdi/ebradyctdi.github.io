@@ -163,6 +163,24 @@
 
 <div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
 
+<!-- PHOTO PREVIEW MODAL -->
+<div id="photoPreviewModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:350;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:12px;overflow:hidden;max-width:600px;width:95%;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
+    <div style="padding:12px 20px;background:#1a3a5c;color:white;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:14px;font-weight:600;" id="previewModalTitle">Photo Preview</span>
+      <button onclick="closePhotoPreview()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;padding:0 4px;">✕</button>
+    </div>
+    <div style="padding:0;text-align:center;background:#f0f0f0;">
+      <img id="previewModalImg" style="max-width:100%;max-height:400px;display:block;margin:0 auto;">
+    </div>
+    <div style="padding:16px 20px;display:flex;gap:10px;justify-content:center;align-items:center;border-top:1px solid #eee;">
+      <div style="font-size:12px;color:#888;flex:1;" id="previewModalInfo"></div>
+      <button onclick="replacePhoto()" style="padding:8px 20px;background:#fd7e14;color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">📷 Replace Photo</button>
+      <button onclick="closePhotoPreview()" style="padding:8px 20px;background:#e9ecef;color:#333;border:none;border-radius:6px;font-size:13px;cursor:pointer;">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- CAPTURE METHOD POPUP -->
 <div id="captureMethodModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:290;align-items:center;justify-content:center;">
   <div style="background:white;border-radius:12px;padding:28px;max-width:380px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.25);text-align:center;">
@@ -191,6 +209,7 @@ let scriptUrl = '', allOrders = [], selectedPO = '', selectedConfig = '', imageD
 let rootDirHandle = null;
 let photoConfigs = {}; // { configName: [photo1, photo2, ...] }
 let existingFileNames = []; // lowercase file names in current PO folder
+let savedFiles = []; // stored file objects for preview
 
 try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzXdH6-k7N1QThKCwi84ebv96Gm3EALATHrb5pllFG3k5v43awlGDcTnSGLPj0wYvaV/exec'; } catch(e) {}
 
@@ -482,7 +501,7 @@ function onPOChange() {
 async function loadExistingPhotos() {
   const logEl = document.getElementById('photoLog');
   existingFileNames = [];
-  if (!rootDirHandle) {
+  savedFiles = [];  if (!rootDirHandle) {
     logEl.innerHTML = '<div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">Choose a save folder to see existing photos.</div>';
     document.getElementById('photoCount').textContent = '';
     document.getElementById('folderStatus').innerHTML = '<span style="font-size:12px;color:#888;">⚠️ No save folder selected</span>';
@@ -509,6 +528,7 @@ async function loadExistingPhotos() {
         existingFileNames.push(name.toLowerCase());
       }
     }
+    savedFiles = files;
     document.getElementById('folderStatus').innerHTML = '<span style="font-size:12px;padding:4px 12px;border-radius:12px;background:#d4edda;color:#155724;font-weight:600;">✅ Folder exists: ' + selectedPO + '</span>';
     files.sort((a, b) => b.modified - a.modified);
     document.getElementById('photoCount').textContent = files.length ? '(' + files.length + ')' : '';
@@ -518,15 +538,16 @@ async function loadExistingPhotos() {
       return;
     }
     let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">';
-    for (const f of files) {
+    for (let fi = 0; fi < files.length; fi++) {
+      const f = files[fi];
       const url = URL.createObjectURL(f.file);
       const date = new Date(f.modified);
       const dateStr = (date.getMonth()+1) + '/' + date.getDate() + '/' + date.getFullYear() + ' ' + String(date.getHours()).padStart(2,'0') + ':' + String(date.getMinutes()).padStart(2,'0');
       const sizeKB = Math.round(f.size / 1024);
-      html += '<div style="border-radius:8px;overflow:hidden;border:1px solid #e0e0e0;background:white;">'
+      html += '<div onclick="openPhotoPreview(' + fi + ')" style="border-radius:8px;overflow:hidden;border:1px solid #e0e0e0;background:white;cursor:pointer;transition:all 0.15s;" onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,0.12)\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.boxShadow=\'none\';this.style.transform=\'none\'">'
         + '<img src="' + url + '" style="width:100%;height:140px;object-fit:cover;display:block;" alt="' + f.name + '">'
         + '<div style="padding:8px 10px;">'
-        + '<div style="font-size:11px;font-weight:600;color:#333;word-break:break-all;">' + f.name + '</div>'
+        + '<div style="font-size:11px;font-weight:600;color:#1a3a5c;word-break:break-all;">' + f.name + '</div>'
         + '<div style="font-size:10px;color:#888;margin-top:2px;">' + dateStr + ' · ' + sizeKB + ' KB</div>'
         + '</div></div>';
     }
@@ -549,6 +570,41 @@ async function createPOFolder() {
   } catch(err) {
     showToast('Error creating folder: ' + err.message, 'error');
   }
+}
+
+let previewFileIdx = -1;
+
+function openPhotoPreview(idx) {
+  const f = savedFiles[idx];
+  if (!f) return;
+  previewFileIdx = idx;
+  const url = URL.createObjectURL(f.file);
+  document.getElementById('previewModalImg').src = url;
+  document.getElementById('previewModalTitle').textContent = f.name;
+  const date = new Date(f.modified);
+  const dateStr = (date.getMonth()+1) + '/' + date.getDate() + '/' + date.getFullYear() + ' ' + String(date.getHours()).padStart(2,'0') + ':' + String(date.getMinutes()).padStart(2,'0');
+  const sizeKB = Math.round(f.size / 1024);
+  document.getElementById('previewModalInfo').textContent = dateStr + ' · ' + sizeKB + ' KB';
+  document.getElementById('photoPreviewModal').style.display = 'flex';
+}
+
+function closePhotoPreview() {
+  document.getElementById('photoPreviewModal').style.display = 'none';
+  previewFileIdx = -1;
+}
+
+function replacePhoto() {
+  if (previewFileIdx < 0) return;
+  const f = savedFiles[previewFileIdx];
+  if (!f) return;
+  // Extract the label from the filename: "[PO] - [label].jpg" -> "label"
+  const nameNoExt = f.name.replace(/\.[^.]+$/, '');
+  const prefix = selectedPO + ' - ';
+  const label = nameNoExt.startsWith(prefix) ? nameNoExt.substring(prefix.length) : nameNoExt;
+  closePhotoPreview();
+  pendingStdPhotoName = label;
+  document.getElementById('captureMethodLabel').textContent = selectedPO + ' - ' + label + '.jpg (replace)';
+  document.getElementById('captureMethodModal').style.display = 'flex';
 }
 
 function renderStdPhotos() {
@@ -595,9 +651,13 @@ function renderStdPhotos() {
         ? 'background:#e9ecef;color:#888;cursor:default;'
         : 'background:#1a3a5c;color:white;cursor:pointer;';
       const onclick = saved ? '' : 'onclick="selectStdPhoto(\'' + photoName.replace(/'/g, "\\'") + '\')"';
+      const savedFileIdx = saved ? savedFiles.findIndex(f => f.name.toLowerCase() === expectedFile) : -1;
+      const nameClick = saved && savedFileIdx >= 0
+        ? 'onclick="openPhotoPreview(' + savedFileIdx + ')" style="cursor:pointer;text-decoration:underline;font-size:13px;font-weight:600;color:#1a3a5c;"'
+        : 'style="font-size:13px;font-weight:600;color:#1a3a5c;"';
       html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (saved ? '#f0fff0' : '#fff5f5') + ';border:1px solid ' + (saved ? '#c3e6cb' : '#f5c6cb') + ';border-radius:8px;">'
         + '<span style="font-size:18px;">' + icon + '</span>'
-        + '<div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#1a3a5c;">' + photoName + '</div>'
+        + '<div style="flex:1;"><div ' + nameClick + '>' + photoName + '</div>'
         + '<div style="font-size:11px;color:#888;">' + selectedPO + ' - ' + photoName + '.jpg</div></div>'
         + statusText
         + '<button ' + onclick + ' style="padding:6px 14px;border:none;border-radius:4px;font-size:12px;font-weight:600;' + btnStyle + '">' + (saved ? 'Done' : '📷 Capture') + '</button>'
