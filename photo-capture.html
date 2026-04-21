@@ -327,7 +327,8 @@ async function savePhotoLocal() {
   if (!rootDirHandle) { showToast('Choose a save folder first', 'error'); return; }
 
   const label = document.getElementById('photoLabel').value.trim() || 'photo';
-  const fileName = selectedPO + ' - ' + label + '.jpg';
+  const statusPart = pendingStdPhotoStatus ? pendingStdPhotoStatus + ' - ' : '';
+  const fileName = selectedPO + ' - ' + statusPart + label + '.jpg';
 
   const btn = document.getElementById('saveBtn');
   btn.disabled = true; btn.textContent = 'Saving...';
@@ -349,6 +350,7 @@ async function savePhotoLocal() {
     showToast('✓ Saved: ' + fileName, 'success');
     cancelPreview();
     pendingStdPhotoName = '';
+    pendingStdPhotoStatus = '';
     loadExistingPhotos();
   } catch(err) {
     if (err.name === 'NotAllowedError') {
@@ -597,13 +599,25 @@ function replacePhoto() {
   if (previewFileIdx < 0) return;
   const f = savedFiles[previewFileIdx];
   if (!f) return;
-  // Extract the label from the filename: "[PO] - [label].jpg" -> "label"
+  // Extract label and status from filename: "[PO] - [Status] - [label].jpg" or "[PO] - [label].jpg"
   const nameNoExt = f.name.replace(/\.[^.]+$/, '');
   const prefix = selectedPO + ' - ';
-  const label = nameNoExt.startsWith(prefix) ? nameNoExt.substring(prefix.length) : nameNoExt;
+  let rest = nameNoExt.startsWith(prefix) ? nameNoExt.substring(prefix.length) : nameNoExt;
+  // Check if rest contains a status part: "Status - Label"
+  let label = rest, status = '';
+  const knownStatuses = ['Received, Awaiting Start', 'In Assembly', 'Awaiting Testing', 'Awaiting QC', 'QC Passed'];
+  for (const s of knownStatuses) {
+    if (rest.startsWith(s + ' - ')) {
+      status = s;
+      label = rest.substring(s.length + 3);
+      break;
+    }
+  }
   closePhotoPreview();
   pendingStdPhotoName = label;
-  document.getElementById('captureMethodLabel').textContent = selectedPO + ' - ' + label + '.jpg (replace)';
+  pendingStdPhotoStatus = status;
+  const statusPart = status ? status + ' - ' : '';
+  document.getElementById('captureMethodLabel').textContent = selectedPO + ' - ' + statusPart + label + '.jpg (replace)';
   document.getElementById('captureMethodModal').style.display = 'flex';
 }
 
@@ -640,7 +654,9 @@ function renderStdPhotos() {
     html += '<div style="display:flex;flex-direction:column;gap:8px;">';
     groups[status].forEach(p => {
       const photoName = p.name;
-      const expectedFile = (selectedPO + ' - ' + photoName + '.jpg').toLowerCase();
+      const photoStatus = p.status || '';
+      const statusPart = photoStatus ? photoStatus + ' - ' : '';
+      const expectedFile = (selectedPO + ' - ' + statusPart + photoName + '.jpg').toLowerCase();
       const saved = existingFileNames.includes(expectedFile);
       if (saved) done++;
       const icon = saved ? '✅' : '⬜';
@@ -650,7 +666,7 @@ function renderStdPhotos() {
       const btnStyle = saved
         ? 'background:#e9ecef;color:#888;cursor:default;'
         : 'background:#1a3a5c;color:white;cursor:pointer;';
-      const onclick = saved ? '' : 'onclick="selectStdPhoto(\'' + photoName.replace(/'/g, "\\'") + '\')"';
+      const onclick = saved ? '' : 'onclick="selectStdPhoto(\'' + photoName.replace(/'/g, "\\'") + '\',\'' + photoStatus.replace(/'/g, "\\'") + '\')"';
       const savedFileIdx = saved ? savedFiles.findIndex(f => f.name.toLowerCase() === expectedFile) : -1;
       const nameClick = saved && savedFileIdx >= 0
         ? 'onclick="openPhotoPreview(' + savedFileIdx + ')" style="cursor:pointer;text-decoration:underline;font-size:13px;font-weight:600;color:#1a3a5c;"'
@@ -658,7 +674,7 @@ function renderStdPhotos() {
       html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + (saved ? '#f0fff0' : '#fff5f5') + ';border:1px solid ' + (saved ? '#c3e6cb' : '#f5c6cb') + ';border-radius:8px;">'
         + '<span style="font-size:18px;">' + icon + '</span>'
         + '<div style="flex:1;"><div ' + nameClick + '>' + photoName + '</div>'
-        + '<div style="font-size:11px;color:#888;">' + selectedPO + ' - ' + photoName + '.jpg</div></div>'
+        + '<div style="font-size:11px;color:#888;">' + selectedPO + ' - ' + statusPart + photoName + '.jpg</div></div>'
         + statusText
         + '<button ' + onclick + ' style="padding:6px 14px;border:none;border-radius:4px;font-size:12px;font-weight:600;' + btnStyle + '">' + (saved ? 'Done' : '📷 Capture') + '</button>'
         + '</div>';
@@ -670,30 +686,38 @@ function renderStdPhotos() {
 }
 
 let pendingStdPhotoName = ''; // set when capturing via standard photo flow
+let pendingStdPhotoStatus = ''; // status for the pending photo
 
-function selectStdPhoto(photoName) {
+function selectStdPhoto(photoName, photoStatus) {
   pendingStdPhotoName = photoName;
-  document.getElementById('captureMethodLabel').textContent = selectedPO + ' - ' + photoName + '.jpg';
+  pendingStdPhotoStatus = photoStatus || '';
+  const displayName = selectedPO + ' - ' + (pendingStdPhotoStatus ? pendingStdPhotoStatus + ' - ' : '') + photoName + '.jpg';
+  document.getElementById('captureMethodLabel').textContent = displayName;
   document.getElementById('captureMethodModal').style.display = 'flex';
 }
 
 function closeCaptureMethod() {
   document.getElementById('captureMethodModal').style.display = 'none';
   pendingStdPhotoName = '';
+  pendingStdPhotoStatus = '';
 }
 
 function stdCaptureWebcam() {
   const name = pendingStdPhotoName;
+  const status = pendingStdPhotoStatus;
   closeCaptureMethod();
-  pendingStdPhotoName = name; // restore after closeCaptureMethod clears it
+  pendingStdPhotoName = name;
+  pendingStdPhotoStatus = status;
   document.getElementById('photoLabel').value = pendingStdPhotoName;
   openCamera();
 }
 
 function stdCaptureFile(event) {
   const name = pendingStdPhotoName;
+  const status = pendingStdPhotoStatus;
   closeCaptureMethod();
-  pendingStdPhotoName = name; // restore after closeCaptureMethod clears it
+  pendingStdPhotoName = name;
+  pendingStdPhotoStatus = status;
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
