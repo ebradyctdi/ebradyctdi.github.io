@@ -180,7 +180,7 @@
 <script>
 const URL_KEY = 'awat_script_url';
 let scriptUrl = '', assemblyOrders = [], allConfigs = [], selectedPO = '', selectedConfig = '', configMaterials = [], materials = [], extraCount = 0, _jsonpCounter = 0;
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzNXxZDQN9WkLmZSUFUrCYpxPEeLjRG-ljTtI8k12FwqufWN9RUN-_K65rp3kuzohvz/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzXdH6-k7N1QThKCwi84ebv96Gm3EALATHrb5pllFG3k5v43awlGDcTnSGLPj0wYvaV/exec'; } catch(e) {}
 
 const AUTH_KEY = 'awat_auth';
 function getAuth() { try { return JSON.parse(localStorage.getItem(AUTH_KEY)) || null; } catch(e) { return null; } }
