@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWAT - Login</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .login-card { background: white; border-radius: 12px; padding: 40px; max-width: 420px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.3); text-align: center; }
+  .logo { width: 200px; margin-bottom: 16px; }
+  .title { font-size: 20px; font-weight: 700; color: #1a3a5c; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+  .field { width: 100%; padding: 14px 16px; border: 2px solid #ddd; border-radius: 8px; font-size: 15px; margin-bottom: 14px; transition: border-color 0.2s; }
+  .field:focus { border-color: #1a3a5c; outline: none; }
+  .login-btn { width: 100%; padding: 14px; background: #1a3a5c; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .login-btn:hover { background: #244d73; }
+  .login-btn:disabled { background: #ccc; cursor: default; }
+  .create-btn { width: 100%; padding: 14px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .create-btn:hover { background: #218838; }
+  .create-btn:disabled { background: #ccc; cursor: default; }
+  .error-msg { color: #dc3545; font-size: 13px; margin-top: 12px; display: none; }
+  .error-msg.show { display: block; }
+  .success-msg { color: #28a745; font-size: 13px; margin-top: 12px; display: none; }
+  .success-msg.show { display: block; }
+  .toggle-link { font-size: 13px; color: #1a3a5c; cursor: pointer; text-decoration: underline; margin-top: 16px; display: inline-block; }
+  .toggle-link:hover { color: #244d73; }
+  .tab-header { display: flex; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+  .tab { flex: 1; padding: 10px; font-size: 14px; font-weight: 600; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+  .tab.active { color: #1a3a5c; border-bottom-color: #1a3a5c; }
+  .tab:hover { color: #1a3a5c; }
+</style>
+</head>
+<body>
+<div class="login-card">
+  <img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" class="logo" style="background:#1a3a5c;padding:12px 20px;border-radius:8px;">
+  <div class="title">AWAT Production Tracker</div>
+  <div class="subtitle">CTDI — Alburtis, PA</div>
+
+  <div class="tab-header">
+    <div class="tab active" id="tabLogin" onclick="showTab('login')">Log In</div>
+    <div class="tab" id="tabCreate" onclick="showTab('create')">Create Account</div>
+  </div>
+
+  <!-- LOGIN FORM -->
+  <div id="loginForm">
+    <form onsubmit="doLogin(event)">
+      <select class="field" id="username" style="font-family:'Segoe UI',Arial,sans-serif;color:#333;appearance:auto;">
+        <option value="">Loading users...</option>
+      </select>
+      <input type="password" class="field" id="password" placeholder="Password" autocomplete="current-password">
+      <button type="submit" class="login-btn" id="loginBtn">Log In</button>
+    </form>
+    <div class="error-msg" id="loginError"></div>
+  </div>
+
+  <!-- CREATE ACCOUNT FORM -->
+  <div id="createForm" style="display:none;">
+    <form onsubmit="doCreate(event)">
+      <input type="text" class="field" id="newName" placeholder="Username / Name" autocomplete="name">
+      <input type="email" class="field" id="newEmail" placeholder="Email (e.g. jsmith@ctdi.com)" autocomplete="email">
+      <input type="password" class="field" id="newPassword" placeholder="Password" autocomplete="new-password">
+      <input type="password" class="field" id="confirmPassword" placeholder="Confirm Password">
+      <button type="submit" class="create-btn" id="createBtn">Create Account</button>
+    </form>
+    <div class="error-msg" id="createError"></div>
+    <div class="success-msg" id="createSuccess"></div>
+  </div>
+
+  <div style="margin-top:20px;"><a href="settings.html" style="font-size:12px;color:#888;text-decoration:none;">⚙️ Settings</a></div>
+</div>
+
+<script>
+const URL_KEY = 'awat_script_url';
+const AUTH_KEY = 'awat_auth';
+let scriptUrl = '', _jsonpCounter = 0;
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzNXxZDQN9WkLmZSUFUrCYpxPEeLjRG-ljTtI8k12FwqufWN9RUN-_K65rp3kuzohvz/exec'; } catch(e) {}
+
+// If already logged in, redirect to overview
+try {
+  const auth = JSON.parse(localStorage.getItem(AUTH_KEY));
+  if (auth && auth.username) { window.location.href = 'overview.html'; }
+} catch(e) {}
+
+function jsonpRequest(url, params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_jsonpCb_' + (++_jsonpCounter) + '_' + Date.now();
+    const qs = Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep = url.includes('?') ? '&' : '?';
+    const fullUrl = url + sep + 'callback=' + cb + (qs ? '&' + qs : '');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Request timed out')); }, 15000);
+    function cleanup() { clearTimeout(timeout); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = function(data) { cleanup(); resolve(data); };
+    const s = document.createElement('script');
+    s.src = fullUrl; s.onerror = function() { cleanup(); reject(new Error('Network error')); };
+    document.head.appendChild(s);
+  });
+}
+
+// ---- TABS ----
+function showTab(tab) {
+  document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('createForm').style.display = tab === 'create' ? 'block' : 'none';
+  document.getElementById('tabLogin').className = 'tab' + (tab === 'login' ? ' active' : '');
+  document.getElementById('tabCreate').className = 'tab' + (tab === 'create' ? ' active' : '');
+  // Clear messages
+  document.getElementById('loginError').classList.remove('show');
+  document.getElementById('createError').classList.remove('show');
+  document.getElementById('createSuccess').classList.remove('show');
+}
+
+// ---- LOAD USERS ----
+async function loadUsers() {
+  if (!scriptUrl) return;
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'listusers' });
+    const sel = document.getElementById('username');
+    if (json.success && json.users && json.users.length) {
+      sel.innerHTML = '<option value="">— Select User —</option>';
+      json.users.forEach(u => { sel.innerHTML += '<option value="' + u + '">' + u + '</option>'; });
+    } else {
+      sel.innerHTML = '<option value="">No users found</option>';
+    }
+  } catch(e) {
+    document.getElementById('username').innerHTML = '<option value="">Connection error</option>';
+  }
+}
+loadUsers();
+
+// ---- LOGIN ----
+async function doLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const errEl = document.getElementById('loginError');
+  errEl.classList.remove('show');
+
+  if (!username || !password) { errEl.textContent = 'Select a user and enter password'; errEl.classList.add('show'); return; }
+  if (!scriptUrl) { errEl.textContent = 'No Apps Script URL configured'; errEl.classList.add('show'); return; }
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Logging in...';
+
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'login', username: username, password: password });
+    if (json.success) {
+      localStorage.setItem(AUTH_KEY, JSON.stringify({ username: json.username, role: json.role }));
+      localStorage.setItem('awat_username', json.username);
+      window.location.href = 'overview.html';
+    } else {
+      errEl.textContent = json.error || 'Login failed';
+      errEl.classList.add('show');
+    }
+  } catch(err) {
+    errEl.textContent = 'Connection error: ' + err.message;
+    errEl.classList.add('show');
+  }
+  btn.disabled = false; btn.textContent = 'Log In';
+}
+
+// ---- CREATE ACCOUNT ----
+async function doCreate(e) {
+  e.preventDefault();
+  const name = document.getElementById('newName').value.trim();
+  const email = document.getElementById('newEmail').value.trim();
+  const password = document.getElementById('newPassword').value.trim();
+  const confirm = document.getElementById('confirmPassword').value.trim();
+  const errEl = document.getElementById('createError');
+  const successEl = document.getElementById('createSuccess');
+  errEl.classList.remove('show');
+  successEl.classList.remove('show');
+
+  if (!name) { errEl.textContent = 'Name is required'; errEl.classList.add('show'); return; }
+  if (!email) { errEl.textContent = 'Email is required'; errEl.classList.add('show'); return; }
+  if (!password) { errEl.textContent = 'Password is required'; errEl.classList.add('show'); return; }
+  if (password !== confirm) { errEl.textContent = 'Passwords do not match'; errEl.classList.add('show'); return; }
+  if (!scriptUrl) { errEl.textContent = 'No Apps Script URL configured'; errEl.classList.add('show'); return; }
+
+  const btn = document.getElementById('createBtn');
+  btn.disabled = true; btn.textContent = 'Creating...';
+
+  try {
+    const json = await jsonpRequest(scriptUrl, { action: 'createuser', username: name, password: password, email: email });
+    if (json.success) {
+      successEl.textContent = '✓ Account created for ' + name + '! You can now log in.';
+      successEl.classList.add('show');
+      document.getElementById('newName').value = '';
+      document.getElementById('newEmail').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('confirmPassword').value = '';
+      // Refresh user list and switch to login tab after a moment
+      await loadUsers();
+      setTimeout(() => {
+        showTab('login');
+        document.getElementById('username').value = name;
+      }, 1500);
+    } else {
+      errEl.textContent = json.error || 'Failed to create account';
+      errEl.classList.add('show');
+    }
+  } catch(err) {
+    errEl.textContent = 'Connection error: ' + err.message;
+    errEl.classList.add('show');
+  }
+  btn.disabled = false; btn.textContent = 'Create Account';
+}
+</script>
+</body>
+</html>

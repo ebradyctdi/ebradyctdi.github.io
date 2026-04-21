@@ -78,7 +78,7 @@
 </head>
 <body>
 <nav class="sidebar">
-  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">AWAT - Alburtis, PA</div><div class="sub" id="userDisplay" style="margin-top:6px;font-size:10px;cursor:pointer;" onclick="changeUser()" title="Click to change user"></div></div>
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">AWAT - Alburtis, PA</div><div class="sub" id="userDisplay" style="margin-top:6px;font-size:10px;cursor:pointer;" onclick="logout()" title="Click to log out"></div></div>
   <div class="sidebar-nav">
     <div class="nav-section">Views</div>
     <a href="overview.html"><span class="icon">🏠</span> Overview</a>
@@ -105,7 +105,7 @@
   <div class="header">
     <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Ship Out</h1><div class="header-sub">Tender POs that have passed QC</div></div>
     <div class="header-right">
-      <span id="headerUser" onclick="changeUser()" style="font-size:11px;color:rgba(255,255,255,0.8);cursor:pointer;padding:4px 10px;background:rgba(255,255,255,0.1);border-radius:12px;" title="Click to change user"></span>
+      <span id="headerUser" onclick="logout()" style="font-size:11px;color:rgba(255,255,255,0.8);cursor:pointer;padding:4px 10px;background:rgba(255,255,255,0.1);border-radius:12px;" title="Click to log out"></span>
       <span class="status-dot disconnected" id="statusDot"></span>
       <span class="status-label" id="statusLabel">Not connected</span>
     </div>
@@ -143,11 +143,13 @@ const URL_KEY = 'awat_script_url';
 let scriptUrl = '', shipOrders = [], selectedPO = null, _jsonpCounter = 0;
 try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzNXxZDQN9WkLmZSUFUrCYpxPEeLjRG-ljTtI8k12FwqufWN9RUN-_K65rp3kuzohvz/exec'; } catch(e) {}
 
-const USER_KEY = 'awat_username';
-function getUser() { return localStorage.getItem(USER_KEY) || ''; }
-function changeUser() { const n = prompt('Enter your name:', getUser()); if (n && n.trim()) { localStorage.setItem(USER_KEY, n.trim()); updateUserDisplay(); } }
-function updateUserDisplay() { const el = document.getElementById('userDisplay'); if (el) el.textContent = getUser() ? '👤 ' + getUser() : ''; const hdr = document.getElementById('headerUser'); if (hdr) hdr.textContent = getUser() ? '👤 ' + getUser() : ''; }
-if (!getUser()) { const n = prompt('Welcome to AWAT! Enter your name:'); if (n && n.trim()) localStorage.setItem(USER_KEY, n.trim()); }
+const AUTH_KEY = 'awat_auth';
+function getAuth() { try { return JSON.parse(localStorage.getItem(AUTH_KEY)) || null; } catch(e) { return null; } }
+function getUser() { const a = getAuth(); return a ? a.username : ''; }
+function requireLogin() { if (!getAuth()) { window.location.href = 'login.html'; return false; } return true; }
+function logout() { if (confirm('Log out?')) { localStorage.removeItem(AUTH_KEY); localStorage.removeItem('awat_username'); window.location.href = 'login.html'; } }
+function updateUserDisplay() { const u = getUser(); const el = document.getElementById('userDisplay'); if (el) el.textContent = u ? '👤 ' + u : ''; const hdr = document.getElementById('headerUser'); if (hdr) hdr.textContent = u ? '👤 ' + u : ''; }
+if (!requireLogin()) throw new Error('redirect');
 updateUserDisplay();
 
 function fmtDate(str) {

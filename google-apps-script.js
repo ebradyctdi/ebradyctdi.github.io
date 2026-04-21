@@ -58,6 +58,62 @@ function doGet(e) {
 
     if (!receivedSheet) return _respond({ success: false, error: 'Sheet "Received Orders" not found' }, callback);
 
+    // ---- LOGIN ----
+    if (action === 'login') {
+      var usersSheet = ss.getSheetByName('Users');
+      if (!usersSheet) return _respond({ success: false, error: 'Sheet "Users" not found' }, callback);
+      var username = (e.parameter.username || '').toString().trim();
+      var password = (e.parameter.password || '').toString().trim();
+      if (!username || !password) return _respond({ success: false, error: 'Username and password are required' }, callback);
+
+      var data = usersSheet.getDataRange().getValues();
+      for (var i = 1; i < data.length; i++) {
+        var u = (data[i][0] || '').toString().trim();
+        var p = (data[i][1] || '').toString().trim();
+        var role = (data[i][3] || '').toString().trim(); // Column D = Role (after Email in C)
+        if (u.toLowerCase() === username.toLowerCase() && p === password) {
+          return _respond({ success: true, username: u, role: role || 'Tech' }, callback);
+        }
+      }
+      return _respond({ success: false, error: 'Invalid username or password' }, callback);
+    }
+
+    // ---- LIST USERS (usernames only, no passwords) ----
+    if (action === 'listusers') {
+      var usersSheet = ss.getSheetByName('Users');
+      if (!usersSheet) return _respond({ success: false, error: 'Sheet "Users" not found' }, callback);
+      var data = usersSheet.getDataRange().getValues();
+      var users = [];
+      for (var i = 1; i < data.length; i++) {
+        var u = (data[i][0] || '').toString().trim();
+        if (u) users.push(u);
+      }
+      return _respond({ success: true, users: users }, callback);
+    }
+
+    // ---- CREATE USER ----
+    if (action === 'createuser') {
+      var usersSheet = ss.getSheetByName('Users');
+      if (!usersSheet) return _respond({ success: false, error: 'Sheet "Users" not found' }, callback);
+      var username = (e.parameter.username || '').toString().trim();
+      var password = (e.parameter.password || '').toString().trim();
+      var email = (e.parameter.email || '').toString().trim();
+      if (!username) return _respond({ success: false, error: 'Name is required' }, callback);
+      if (!password) return _respond({ success: false, error: 'Password is required' }, callback);
+      if (!email) return _respond({ success: false, error: 'Email is required' }, callback);
+
+      // Check for duplicate username
+      var data = usersSheet.getDataRange().getValues();
+      for (var i = 1; i < data.length; i++) {
+        if ((data[i][0] || '').toString().trim().toLowerCase() === username.toLowerCase()) {
+          return _respond({ success: false, error: 'Username "' + username + '" already exists' }, callback);
+        }
+      }
+
+      usersSheet.appendRow([username, password, email, 'Tech']);
+      return _respond({ success: true, username: username }, callback);
+    }
+
     // ---- RECEIVE ----
     if (action === 'receive') {
       if (!historySheet) return _respond({ success: false, error: 'Sheet "Transaction History" not found' }, callback);
