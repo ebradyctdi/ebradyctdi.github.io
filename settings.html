@@ -62,6 +62,7 @@
   <div class="sidebar-nav">
     <div class="nav-section">Views</div>
     <a href="overview.html"><span class="icon">🏠</span> Overview</a>
+    <a href="production-tracker.html"><span class="icon">📊</span> Production Tracker</a>
     <a href="wip.html"><span class="icon">🏭</span> WIP</a>
     <a href="material-lookup.html"><span class="icon">🔎</span> Material Lookup</a>
     <a href="history.html"><span class="icon">📜</span> Ship History</a>
@@ -128,7 +129,7 @@ const URL_KEY = 'awat_script_url';
 let _jsonpCounter = 0;
 
 // Load saved URL
-const saved = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzXdH6-k7N1QThKCwi84ebv96Gm3EALATHrb5pllFG3k5v43awlGDcTnSGLPj0wYvaV/exec';
+const saved = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwETLbP1TUzQ6_j3i6oYywPeEjxMkfFCRJNkIfzBJkr006JxCuYq4wlUpd2IAq7DUSI/exec';
 document.getElementById('scriptUrl').value = saved;
 
 const AUTH_KEY = 'awat_auth';

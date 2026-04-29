@@ -561,6 +561,21 @@ function doGet(e) {
       return _respond({ success: true, data: rows }, callback);
     }
 
+    // ---- ALL TRANSACTION HISTORY ----
+    if (action === 'alltransactions') {
+      if (!historySheet) return _respond({ success: false, error: 'Sheet "Transaction History" not found' }, callback);
+      var data = historySheet.getDataRange().getValues();
+      if (data.length <= 1) return _respond({ success: true, data: [] }, callback);
+      var headers = data[0];
+      var rows = [];
+      for (var i = 1; i < data.length; i++) {
+        var row = {};
+        headers.forEach(function(h, j) { row[h] = data[i][j]; });
+        rows.push(row);
+      }
+      return _respond({ success: true, data: rows }, callback);
+    }
+
     // ---- READ CONFIGS ----
     if (action === 'readconfigs') {
       var cfgSheet = ss.getSheetByName('Cabinet Configs');

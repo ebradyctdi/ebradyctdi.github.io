@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWAT - Production Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1a3a5c; color: white; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; }
+  .sidebar-brand { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-brand .sub { font-size: 13px; opacity: 0.9; margin-top: 2px; font-weight: 700; letter-spacing: 0.5px; }
+  .sidebar-nav { flex: 1; padding: 12px 0; }
+  .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: white; }
+  .sidebar-nav a.active { background: rgba(255,255,255,0.12); color: white; border-left-color: #fd7e14; }
+  .sidebar-nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-nav .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px; letter-spacing: 1px; }
+  .main-wrap { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a3a5c 0%, #2c5f8a 100%); color: white; padding: 16px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .status-dot.connected { background: #28a745; }
+  .status-dot.disconnected { background: #dc3545; }
+  .status-dot.pending { background: #fd7e14; }
+  .status-label { font-size: 11px; color: rgba(255,255,255,0.8); margin-left: 4px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; width: 100%; }
+  .card { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+  .controls { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .controls label { font-size: 12px; font-weight: 600; color: #666; }
+  .controls input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+  .refresh-btn { padding: 8px 16px; background: white; color: #1a3a5c; border: 1px solid #1a3a5c; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .refresh-btn:hover { background: #f0f2f5; }
+  .tracker-table { width: 100%; border-collapse: collapse; }
+  .tracker-table th { padding: 10px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; text-align: center; white-space: nowrap; }
+  .tracker-table th.rh { text-align: left; background: #1a3a5c; color: white; position: sticky; left: 0; z-index: 2; min-width: 180px; }
+  .tracker-table th.dh { background: #f0f2f5; color: #333; min-width: 70px; border: 1px solid #ddd; }
+  .tracker-table th.dh.today { background: #e3f2fd; color: #0d47a1; font-weight: 700; }
+  .tracker-table th.dh.wknd { background: #f8f8f8; color: #bbb; }
+  .tracker-table th.th { background: #1a3a5c; color: white; min-width: 70px; }
+  .tracker-table td { padding: 10px 8px; text-align: center; font-size: 14px; font-weight: 600; border: 1px solid #eee; }
+  .tracker-table td.rl { text-align: left; font-size: 13px; font-weight: 600; color: #1a3a5c; background: white; position: sticky; left: 0; z-index: 1; border-right: 2px solid #1a3a5c; }
+  .tracker-table td.ct { font-family: Consolas, monospace; cursor: default; }
+  .tracker-table td.ct.hv { background: #f0fff0; color: #1b5e20; cursor: pointer; }
+  .tracker-table td.ct.td { background: #e3f2fd; }
+  .tracker-table td.ct.td.hv { background: #bbdefb; color: #0d47a1; cursor: pointer; }
+  .tracker-table td.ct.wk { background: #fafafa; color: #ccc; }
+  .tracker-table td.tt { font-family: Consolas, monospace; font-weight: 700; background: #f0f2f5; border-left: 2px solid #1a3a5c; }
+  .tracker-table tr:hover td { background: #f8f9fa; }
+  .tracker-table tr:hover td.rl { background: #e8f0fe; }
+  .table-wrap { overflow-x: auto; }
+  .empty-state { text-align: center; padding: 60px 20px; color: #aaa; font-size: 14px; }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; z-index: 300; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+    .sidebar-overlay.show { display: block; }
+    .main-wrap { margin-left: 0; }
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 16px; }
+    .container { padding: 16px; }
+    .hamburger { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; cursor: pointer; color: white; font-size: 20px; margin-right: 12px; }
+  }
+  @media (min-width: 769px) { .hamburger { display: none; } .sidebar-overlay { display: none !important; } }
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="sidebar-brand"><img src="https://www.ctdi.com/wp-content/uploads/2020/12/ctdi-flat-logo-white-1024x223.png" alt="CTDI" style="width:100%;margin-bottom:10px;"><div class="sub">AWAT - Alburtis, PA</div><div class="sub" id="userDisplay" style="margin-top:6px;font-size:10px;cursor:pointer;" onclick="logout()" title="Click to log out"></div></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Views</div>
+    <a href="overview.html"><span class="icon">🏠</span> Overview</a>
+    <a href="production-tracker.html" class="active"><span class="icon">📊</span> Production Tracker</a>
+    <a href="wip.html"><span class="icon">🏭</span> WIP</a>
+    <a href="material-lookup.html"><span class="icon">🔎</span> Material Lookup</a>
+    <a href="history.html"><span class="icon">📜</span> Ship History</a>
+    <div class="nav-section">Apps</div>
+    <a href="receive-order.html"><span class="icon">📦</span> Receive Order</a>
+    <a href="start-build.html"><span class="icon">🔨</span> Start Build</a>
+    <a href="material-info.html"><span class="icon">📋</span> Material Info Capture</a>
+    <a href="build-complete.html"><span class="icon">🏗️</span> Assembly Complete</a>
+    <a href="test-results.html"><span class="icon">✔️</span> Test Results</a>
+    <a href="qc-result.html"><span class="icon">🔍</span> QC Result</a>
+    <a href="ship-out.html"><span class="icon">🚚</span> Ship Out</a>
+    <a href="infirmary.html"><span class="icon">🏥</span> Infirmary</a>
+    <div class="nav-section">Photos</div>
+    <a href="photo-capture.html"><span class="icon">📸</span> Photo Capture</a>
+    <div class="nav-section">System</div>
+    <a href="settings.html"><span class="icon">⚙️</span> Settings</a>
+    <a href="configurations.html"><span class="icon">🗂️</span> Configurations</a>
+  </div>
+</nav>
+<div class="main-wrap">
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <div><button class="hamburger" onclick="toggleSidebar()">☰</button><h1>Production Tracker</h1><div class="header-sub">Daily transaction counts by category</div></div>
+    <div class="header-right">
+      <span id="headerUser" onclick="logout()" style="font-size:11px;color:rgba(255,255,255,0.8);cursor:pointer;padding:4px 10px;background:rgba(255,255,255,0.1);border-radius:12px;" title="Click to log out"></span>
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span class="status-label" id="statusLabel">Not connected</span>
+    </div>
+  </div>
+  <div class="container">
+    <div class="card">
+      <div class="controls">
+        <div><label>Week Of</label><br><input type="date" id="weekStart" onchange="renderTracker()"></div>
+        <div style="display:flex;gap:6px;align-items:flex-end;">
+          <button onclick="shiftWeek(-1)" style="padding:8px 12px;background:#e9ecef;border:none;border-radius:4px;cursor:pointer;font-size:14px;">&#9664;</button>
+          <button onclick="goToday()" style="padding:8px 16px;background:#1a3a5c;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">This Week</button>
+          <button onclick="shiftWeek(1)" style="padding:8px 12px;background:#e9ecef;border:none;border-radius:4px;cursor:pointer;font-size:14px;">&#9654;</button>
+        </div>
+        <div style="flex:1;"></div>
+        <button class="refresh-btn" onclick="loadData()">Refresh</button>
+      </div>
+      <div class="table-wrap"><div id="trackerContent"><div class="empty-state">Loading...</div></div></div>
+    </div>
+  </div>
+</div>
+<!-- PO POPUP -->
+<div id="poPopup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:300;align-items:center;justify-content:center;" onclick="if(event.target===this)closePoPopup()">
+  <div style="background:white;border-radius:12px;overflow:hidden;max-width:500px;width:90%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,0.25);">
+    <div style="padding:14px 20px;background:#1a3a5c;color:white;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:14px;font-weight:600;" id="poPopupTitle">PO Details</span>
+      <button onclick="closePoPopup()" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;">&#10005;</button>
+    </div>
+    <div style="padding:16px 20px;overflow-y:auto;flex:1;" id="poPopupContent"></div>
+  </div>
+</div>
+<div id="toast" style="position:fixed;top:80px;right:30px;padding:14px 24px;border-radius:6px;color:white;font-size:14px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:400;transform:translateX(120%);transition:transform 0.3s ease;"></div>
+</body>
+</html>
+
+<script>
+const URL_KEY='awat_script_url';
+let scriptUrl='',allTransactions=[],allOrders=[],_jsonpCounter=0;
+let cellData={},wipData={};
+try{scriptUrl=localStorage.getItem(URL_KEY)||'https://script.google.com/macros/s/AKfycbwETLbP1TUzQ6_j3i6oYywPeEjxMkfFCRJNkIfzBJkr006JxCuYq4wlUpd2IAq7DUSI/exec';}catch(e){}
+
+const AUTH_KEY='awat_auth';
+function getAuth(){try{return JSON.parse(localStorage.getItem(AUTH_KEY))||null;}catch(e){return null;}}
+function getUser(){const a=getAuth();return a?a.username:'';}
+function requireLogin(){if(!getAuth()){window.location.href='login.html';return false;}return true;}
+function logout(){if(confirm('Log out?')){localStorage.removeItem(AUTH_KEY);localStorage.removeItem('awat_username');window.location.href='login.html';}}
+function updateUserDisplay(){const u=getUser();const el=document.getElementById('userDisplay');if(el)el.textContent=u?'👤 '+u:'';const hdr=document.getElementById('headerUser');if(hdr)hdr.textContent=u?'👤 '+u:'';}
+if(!requireLogin())throw new Error('redirect');
+updateUserDisplay();
+
+function jsonpRequest(url,params){
+  return new Promise((resolve,reject)=>{
+    const cb='_jsonpCb_'+(++_jsonpCounter)+'_'+Date.now();
+    const qs=Object.entries(params||{}).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+    const sep=url.includes('?')?'&':'?';
+    const fullUrl=url+sep+'callback='+cb+(qs?'&'+qs:'');
+    const timeout=setTimeout(()=>{cleanup();reject(new Error('Request timed out'));},30000);
+    function cleanup(){clearTimeout(timeout);delete window[cb];if(s.parentNode)s.parentNode.removeChild(s);}
+    window[cb]=function(data){cleanup();resolve(data);};
+    const s=document.createElement('script');
+    s.src=fullUrl;s.onerror=function(){cleanup();reject(new Error('Network error'));};
+    document.head.appendChild(s);
+  });
+}
+
+function setStatus(st,lb){document.getElementById('statusDot').className='status-dot '+st;document.getElementById('statusLabel').textContent=lb;}
+
+function getMonday(d){const dt=new Date(d);const day=dt.getDay();const diff=dt.getDate()-day+(day===0?-6:1);dt.setDate(diff);dt.setHours(0,0,0,0);return dt;}
+function fmtDI(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function goToday(){document.getElementById('weekStart').value=fmtDI(getMonday(new Date()));renderTracker();}
+function shiftWeek(dir){const inp=document.getElementById('weekStart');const d=new Date(inp.value+'T00:00:00');d.setDate(d.getDate()+(dir*7));inp.value=fmtDI(d);renderTracker();}
+document.getElementById('weekStart').value=fmtDI(getMonday(new Date()));
+
+const categories=[
+  {label:'Orders Received',match:s=>s==='Received, Awaiting Start',color:'#0d6efd',wipStatus:'Received, Awaiting Start'},
+  {label:'Builds Started',match:s=>s==='In Assembly',color:'#fd7e14',wipStatus:'In Assembly'},
+  {label:'Assembly Completed',match:s=>s==='Awaiting Testing',color:'#e91e63',wipStatus:'Awaiting Testing'},
+  {label:'Testing Completed',match:s=>s==='Awaiting QC',color:'#9c27b0',wipStatus:'Awaiting QC'},
+  {label:'QC Passed',match:s=>s==='QC Passed',color:'#28a745',wipStatus:'QC Passed'},
+  {label:'Shipped (Tendered)',match:s=>s==='Tender',color:'#17a2b8',wipStatus:null},
+  {type:'divider'},
+  {label:'Sent to Infirmary',match:s=>s==='In Infirmary',color:'#dc3545',wipStatus:'In Infirmary'},
+];
+
+async function loadData(){
+  if(!scriptUrl){setStatus('disconnected','No URL');return;}
+  setStatus('pending','Loading...');
+  try{
+    const[txJ,orJ]=await Promise.all([jsonpRequest(scriptUrl,{action:'alltransactions'}),jsonpRequest(scriptUrl,{})]);
+    if(txJ.success&&orJ.success){setStatus('connected','Connected');allTransactions=txJ.data||[];allOrders=orJ.data||[];renderTracker();}
+    else throw new Error(txJ.error||orJ.error||'Error');
+  }catch(err){setStatus('disconnected','Connection failed');document.getElementById('trackerContent').innerHTML='<div class="empty-state">'+err.message+'</div>';}
+}
+
+function renderTracker(){
+  const C=document.getElementById('trackerContent');
+  if(!allTransactions.length){C.innerHTML='<div class="empty-state">No transaction data.</div>';return;}
+  const ws=new Date(document.getElementById('weekStart').value+'T00:00:00');
+  const today=new Date();today.setHours(0,0,0,0);
+  const days=[];for(let i=0;i<7;i++){const d=new Date(ws);d.setDate(d.getDate()+i);days.push(d);}
+  const dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const wipCts={};wipData={};
+  allOrders.forEach(o=>{const s=(o['Status']||'').toString().trim(),po=(o['PO Number']||'').toString().trim();if(s&&s!=='Tender'){wipCts[s]=(wipCts[s]||0)+1;if(!wipData[s])wipData[s]=[];wipData[s].push(po);}});
+
+  const cts={};cellData={};
+  categories.forEach((c,ci)=>{if(!c.type)cts[ci]={};});
+  allTransactions.forEach(t=>{
+    const ts=(t['Timestamp']||'').toString().trim();if(!ts)return;
+    const d=new Date(ts);if(isNaN(d.getTime()))return;
+    const key=fmtDI(d),toS=(t['To Status']||'').toString().trim(),po=(t['PO Number']||'').toString().trim();
+    categories.forEach((c,ci)=>{if(!c.type&&c.match(toS)){cts[ci][key]=(cts[ci][key]||0)+1;const ck=ci+'_'+key;if(!cellData[ck])cellData[ck]=[];cellData[ck].push(po);}});
+  });
+
+  const tc=days.length+3;
+  let h='<table class="tracker-table"><thead><tr><th class="rh">Category</th>';
+  days.forEach(d=>{const iT=d.getTime()===today.getTime(),iW=d.getDay()===0||d.getDay()===6;h+='<th class="dh'+(iT?' today':'')+(iW?' wknd':'')+'">'+dn[d.getDay()]+'<br>'+mn[d.getMonth()]+' '+d.getDate()+'</th>';});
+  h+='<th class="th">Week<br>Total</th><th class="th" style="background:#6f42c1;">Current<br>WIP</th></tr></thead><tbody>';
+
+  categories.forEach((cat,ci)=>{
+    if(cat.type==='divider'){h+='<tr><td colspan="'+tc+'" style="padding:4px;background:#e9ecef;border:none;"></td></tr>';return;}
+    h+='<tr><td class="rl"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+cat.color+';margin-right:8px;"></span>'+cat.label+'</td>';
+    let wt=0,wp=[];
+    days.forEach(d=>{
+      const key=fmtDI(d),val=cts[ci][key]||0;wt+=val;
+      const ck=ci+'_'+key;if(cellData[ck])wp=wp.concat(cellData[ck]);
+      const iT=d.getTime()===today.getTime(),iW=d.getDay()===0||d.getDay()===6;
+      let cls='ct';if(iT)cls+=' td';if(iW)cls+=' wk';if(val>0)cls+=' hv';
+      const clk=val>0?' onclick="showCellPOs(\''+ck+'\',\''+cat.label.replace(/'/g,"\\'")+'\',\''+dn[d.getDay()]+' '+mn[d.getMonth()]+' '+d.getDate()+'\')"':'';
+      h+='<td class="'+cls+'"'+clk+'>'+(val||'\u2014')+'</td>';
+    });
+    const wk='week_'+ci;cellData[wk]=wp;
+    const wkClk=wt>0?' onclick="showCellPOs(\''+wk+'\',\''+cat.label.replace(/'/g,"\\'")+'\',\'Week Total\')"':'';
+    h+='<td class="tt" style="cursor:'+(wt>0?'pointer':'default')+'"'+wkClk+'>'+(wt||'\u2014')+'</td>';
+    const wv=cat.wipStatus?(wipCts[cat.wipStatus]||0):'';
+    const wClk=cat.wipStatus&&wv>0?' onclick="showWipPOs(\''+cat.wipStatus.replace(/'/g,"\\'")+'\',\''+cat.label.replace(/'/g,"\\'")+' \')"':'';
+    h+='<td class="tt" style="background:#f3e8ff;color:#6f42c1;border-left:2px solid #6f42c1;cursor:'+(wv>0?'pointer':'default')+'"'+wClk+'>'+(wv!==''?(wv||'0'):'')+'</td></tr>';
+  });
+
+  h+='<tr style="border-top:2px solid #1a3a5c;"><td class="rl" style="font-weight:700;">Daily Total</td>';
+  let gt=0;
+  days.forEach(d=>{const key=fmtDI(d);let dt=0;categories.forEach((c,ci)=>{if(!c.type)dt+=(cts[ci][key]||0);});gt+=dt;const iT=d.getTime()===today.getTime();h+='<td class="tt" style="'+(iT?'background:#bbdefb;':'')+'">'+(dt||'\u2014')+'</td>';});
+  h+='<td class="tt" style="background:#1a3a5c;color:white;font-size:16px;">'+gt+'</td>';
+  const tw=Object.values(wipCts).reduce((s,v)=>s+v,0);
+  h+='<td class="tt" style="background:#6f42c1;color:white;font-size:16px;border-left:2px solid #6f42c1;">'+tw+'</td></tr>';
+  h+='</tbody></table>';
+  C.innerHTML=h;
+}
+
+function showCellPOs(ck,catLabel,dateLabel){
+  const pos=cellData[ck]||[];if(!pos.length)return;
+  document.getElementById('poPopupTitle').textContent=catLabel+' \u2014 '+dateLabel+' ('+pos.length+')';
+  let h='<table style="width:100%;border-collapse:collapse;"><thead><tr><th style="padding:8px 10px;background:#f0f2f5;font-size:11px;text-transform:uppercase;text-align:left;color:#666;">PO Number</th></tr></thead><tbody>';
+  pos.forEach(po=>{h+='<tr><td style="padding:8px 10px;font-size:14px;font-family:Consolas,monospace;font-weight:600;color:#1a3a5c;border-bottom:1px solid #eee;">'+po+'</td></tr>';});
+  h+='</tbody></table>';
+  document.getElementById('poPopupContent').innerHTML=h;
+  document.getElementById('poPopup').style.display='flex';
+}
+
+function showWipPOs(status,label){
+  const pos=wipData[status]||[];if(!pos.length)return;
+  document.getElementById('poPopupTitle').textContent='Current WIP \u2014 '+status+' ('+pos.length+')';
+  let h='<table style="width:100%;border-collapse:collapse;"><thead><tr><th style="padding:8px 10px;background:#f0f2f5;font-size:11px;text-transform:uppercase;text-align:left;color:#666;">PO Number</th></tr></thead><tbody>';
+  pos.forEach(po=>{h+='<tr><td style="padding:8px 10px;font-size:14px;font-family:Consolas,monospace;font-weight:600;color:#1a3a5c;border-bottom:1px solid #eee;">'+po+'</td></tr>';});
+  h+='</tbody></table>';
+  document.getElementById('poPopupContent').innerHTML=h;
+  document.getElementById('poPopup').style.display='flex';
+}
+
+function closePoPopup(){document.getElementById('poPopup').style.display='none';}
+
+function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.style.background=type==='success'?'#28a745':type==='error'?'#dc3545':'#fd7e14';t.style.transform='translateX(0)';setTimeout(()=>{t.style.transform='translateX(120%)';},2500);}
+function toggleSidebar(){document.querySelector('.sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('show');}
+function closeSidebar(){document.querySelector('.sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('show');}
+document.querySelectorAll('.sidebar-nav a').forEach(a=>a.addEventListener('click',closeSidebar));
+
+loadData();
+</script>
