@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AWAT - Photo Capture</title>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
@@ -129,7 +130,7 @@
         <label class="capture-btn">
           <div class="icon">📁</div>
           <div class="text">Choose File</div>
-          <input type="file" accept="image/*" style="display:none;" onchange="onFileSelected(event)">
+          <input type="file" accept="image/*,.heic,.heif" style="display:none;" onchange="onFileSelected(event)">
         </label>
       </div>
       <div class="preview-area" id="previewArea">
@@ -210,7 +211,7 @@
       <label style="flex:1;padding:18px 12px;border:2px dashed #ccc;border-radius:8px;background:#fafafa;cursor:pointer;text-align:center;transition:all 0.15s;" onmouseover="this.style.borderColor='#1a3a5c';this.style.background='#f0f4ff'" onmouseout="this.style.borderColor='#ccc';this.style.background='#fafafa'">
         <div style="font-size:28px;margin-bottom:6px;">📁</div>
         <div style="font-size:13px;color:#666;">Choose File</div>
-        <input type="file" accept="image/*" style="display:none;" onchange="stdCaptureFile(event)">
+        <input type="file" accept="image/*,.heic,.heif" style="display:none;" onchange="stdCaptureFile(event)">
       </label>
     </div>
     <button onclick="closeCaptureMethod()" style="margin-top:16px;padding:8px 24px;background:#e9ecef;color:#333;border:none;border-radius:6px;cursor:pointer;font-size:13px;">Cancel</button>
@@ -733,7 +734,7 @@ function stdCaptureWebcam() {
   openCamera();
 }
 
-function stdCaptureFile(event) {
+async function stdCaptureFile(event) {
   const name = pendingStdPhotoName;
   const status = pendingStdPhotoStatus;
   closeCaptureMethod();
@@ -741,31 +742,35 @@ function stdCaptureFile(event) {
   pendingStdPhotoStatus = status;
   const file = event.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const img = new Image();
-    img.onload = function() {
-      const canvas = document.createElement('canvas');
-      const maxW = 1920;
-      let w = img.width, h = img.height;
-      if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      imageData = canvas.toDataURL('image/jpeg', 0.92);
-      document.getElementById('photoLabel').value = pendingStdPhotoName;
-      document.getElementById('previewImg').src = imageData;
-      document.getElementById('previewArea').style.display = 'block';
-      document.getElementById('captureCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
   event.target.value = '';
+  const blob = await ensureJpegBlob(file);
+  if (!blob) return;
+  fileToImageData(blob, function(data) {
+    imageData = data;
+    document.getElementById('photoLabel').value = pendingStdPhotoName;
+    document.getElementById('previewImg').src = imageData;
+    document.getElementById('previewArea').style.display = 'block';
+    document.getElementById('captureCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
 }
 
-function onFileSelected(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+// Convert HEIC/HEIF to JPEG blob if needed
+async function ensureJpegBlob(file) {
+  const name = (file.name || '').toLowerCase();
+  const type = (file.type || '').toLowerCase();
+  if (name.endsWith('.heic') || name.endsWith('.heif') || type.includes('heic') || type.includes('heif')) {
+    try {
+      const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+      return blob;
+    } catch(err) {
+      showToast('HEIC conversion failed: ' + err.message, 'error');
+      return null;
+    }
+  }
+  return file;
+}
+
+function fileToImageData(blob, callback) {
   const reader = new FileReader();
   reader.onload = function(e) {
     const img = new Image();
@@ -776,16 +781,26 @@ function onFileSelected(event) {
       if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      imageData = canvas.toDataURL('image/jpeg', 0.92);
-      document.getElementById('previewImg').src = imageData;
-      document.getElementById('previewArea').style.display = 'block';
-      document.getElementById('photoLabel').value = '';
-      document.getElementById('photoLabel').focus();
+      callback(canvas.toDataURL('image/jpeg', 0.92));
     };
     img.src = e.target.result;
   };
-  reader.readAsDataURL(file);
+  reader.readAsDataURL(blob);
+}
+
+async function onFileSelected(event) {
+  const file = event.target.files[0];
+  if (!file) return;
   event.target.value = '';
+  const blob = await ensureJpegBlob(file);
+  if (!blob) return;
+  fileToImageData(blob, function(data) {
+    imageData = data;
+    document.getElementById('previewImg').src = imageData;
+    document.getElementById('previewArea').style.display = 'block';
+    document.getElementById('photoLabel').value = '';
+    document.getElementById('photoLabel').focus();
+  });
 }
 
 function cancelPreview() {
