@@ -210,7 +210,7 @@ let selectedPO = null;
 let selectedAction = null; // 'qcpass' or 'qcfail'
 let _jsonpCounter = 0;
 
-try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwETLbP1TUzQ6_j3i6oYywPeEjxMkfFCRJNkIfzBJkr006JxCuYq4wlUpd2IAq7DUSI/exec'; } catch(e) {}
+try { scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzH6BlAttdknibtNWcDTCtr14g3tlUur651BtzmpK6UMRid9kabf-xSk1kbotVqeu0u/exec'; } catch(e) {}
 
 const AUTH_KEY = 'awat_auth';
 function getAuth() { try { return JSON.parse(localStorage.getItem(AUTH_KEY)) || null; } catch(e) { return null; } }

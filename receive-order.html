@@ -145,7 +145,7 @@ let entries = [], scriptUrl = '', isConnected = false, receivedPOs = new Set(), 
 try {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) { entries = JSON.parse(saved); entries.forEach(e => receivedPOs.add(e.po)); }
-  scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbwETLbP1TUzQ6_j3i6oYywPeEjxMkfFCRJNkIfzBJkr006JxCuYq4wlUpd2IAq7DUSI/exec';
+  scriptUrl = localStorage.getItem(URL_KEY) || 'https://script.google.com/macros/s/AKfycbzH6BlAttdknibtNWcDTCtr14g3tlUur651BtzmpK6UMRid9kabf-xSk1kbotVqeu0u/exec';
 } catch(e) {}
 
 const AUTH_KEY = 'awat_auth';
